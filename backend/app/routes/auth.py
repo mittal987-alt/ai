@@ -134,11 +134,3 @@ def profile(authorization: str = Header(None)):
     return {
         "email": payload["sub"]
     }
-@router.get("/dashboard")
-def dashboard():
-
-    return {
-        "income": 50000,
-        "expense": 20000,
-        "savings": 30000
-    }

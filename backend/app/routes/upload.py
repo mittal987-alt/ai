@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, Header
 from sqlalchemy.orm import Session
 import pdfplumber
 import tempfile
@@ -6,10 +6,14 @@ import os
 from datetime import date
 
 from app.database import SessionLocal
-from app.models import Transaction
+from app.models import Transaction, User
 from app.services.parser import extract_transactions
+from jose import jwt
 
 router = APIRouter()
+
+SECRET_KEY = "finance_secret_key"
+ALGORITHM = "HS256"
 
 
 def get_db():
@@ -23,6 +27,7 @@ def get_db():
 @router.post("/upload-statement")
 async def upload_statement(
     file: UploadFile = File(...),
+    authorization: str = Header(...),
     db: Session = Depends(get_db)
 ):
 
@@ -30,6 +35,34 @@ async def upload_statement(
         return {
             "success": False,
             "message": "Only PDF files are allowed"
+        }
+
+    # Get user from JWT
+    try:
+        token = authorization.split(" ")[1]
+
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        email = payload["sub"]
+
+        user = db.query(User).filter(
+            User.email == email
+        ).first()
+
+        if not user:
+            return {
+                "success": False,
+                "message": "User not found"
+            }
+
+    except Exception:
+        return {
+            "success": False,
+            "message": "Invalid token"
         }
 
     contents = await file.read()
@@ -65,7 +98,6 @@ async def upload_statement(
             extracted_text
         )
 
-        # Reject non-bank PDFs
         if len(transactions) == 0:
             return {
                 "success": False,
@@ -81,7 +113,7 @@ async def upload_statement(
         for tx in transactions:
 
             transaction = Transaction(
-                user_id=1,
+                user_id=user.id,
                 transaction_date=date.today(),
                 description=tx["description"],
                 amount=tx["amount"],
