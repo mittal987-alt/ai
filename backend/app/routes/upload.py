@@ -7,10 +7,7 @@ from datetime import date
 
 from app.database import SessionLocal
 from app.models import Transaction
-from app.services.parser import (
-    categorize_transaction,
-    extract_transactions
-)
+from app.services.parser import extract_transactions
 
 router = APIRouter()
 
@@ -29,9 +26,10 @@ async def upload_statement(
     db: Session = Depends(get_db)
 ):
 
-    if not file.filename.endswith(".pdf"):
+    if not file.filename.lower().endswith(".pdf"):
         return {
-            "error": "Only PDF files are allowed"
+            "success": False,
+            "message": "Only PDF files are allowed"
         }
 
     contents = await file.read()
@@ -44,9 +42,9 @@ async def upload_statement(
         tmp.write(contents)
         tmp_path = tmp.name
 
-    extracted_text = ""
-
     try:
+
+        extracted_text = ""
 
         with pdfplumber.open(tmp_path) as pdf:
 
@@ -57,10 +55,26 @@ async def upload_statement(
                 if text:
                     extracted_text += text + "\n"
 
-        # Extract transactions from text
+        if not extracted_text.strip():
+            return {
+                "success": False,
+                "message": "No text found inside PDF"
+            }
+
         transactions = extract_transactions(
             extracted_text
         )
+
+        # Reject non-bank PDFs
+        if len(transactions) == 0:
+            return {
+                "success": False,
+                "message": (
+                    "No transactions found. "
+                    "Please upload a valid bank statement."
+                ),
+                "sample_text": extracted_text[:500]
+            }
 
         saved_count = 0
 
@@ -81,11 +95,20 @@ async def upload_statement(
         db.commit()
 
         return {
+            "success": True,
             "filename": file.filename,
             "transactions_found": len(transactions),
             "transactions_saved": saved_count,
-            "sample_text": extracted_text[:500],
-            "message": "Uploaded successfully"
+            "message": "Bank statement processed successfully"
+        }
+
+    except Exception as e:
+
+        db.rollback()
+
+        return {
+            "success": False,
+            "message": str(e)
         }
 
     finally:

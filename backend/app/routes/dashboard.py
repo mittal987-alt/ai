@@ -16,35 +16,27 @@ def get_db():
 
 
 @router.get("/dashboard")
-def dashboard(
-    db: Session = Depends(get_db)
-):
+def dashboard(db: Session = Depends(get_db)):
 
     transactions = db.query(Transaction).all()
 
-    income = 0
-    expense = 0
+    income = sum(
+        t.amount
+        for t in transactions
+        if t.transaction_type == "income"
+    )
 
-    category_breakdown = {}
+    expense = sum(
+        t.amount
+        for t in transactions
+        if t.transaction_type == "expense"
+    )
 
-    for t in transactions:
-
-        if t.transaction_type == "income":
-            income += t.amount
-        else:
-            expense += t.amount
-
-        category_breakdown[t.category] = (
-            category_breakdown.get(
-                t.category,
-                0
-            ) + t.amount
-        )
+    savings = income - expense
 
     return {
         "income": income,
         "expense": expense,
-        "savings": income - expense,
-        "total_transactions": len(transactions),
-        "category_breakdown": category_breakdown
+        "savings": savings,
+        "total_transactions": len(transactions)
     }

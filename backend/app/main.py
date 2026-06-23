@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from app.routes.upload import router as upload_router
 from app.routes.transaction import router as transaction_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.insights import router as insights_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine
@@ -20,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth_router)
+app.include_router(insights_router)
 app.include_router(upload_router)
 app.include_router(dashboard_router)
 app.include_router(transaction_router)

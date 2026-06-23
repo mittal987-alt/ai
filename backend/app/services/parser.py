@@ -1,54 +1,43 @@
+# app/services/parser.py
+
 import re
 
-def categorize_transaction(description):
-
+def categorize_transaction(description: str):
     desc = description.lower()
 
     if "amazon" in desc:
         return "Shopping"
-
-    if "zomato" in desc or "swiggy" in desc:
+    elif "zomato" in desc or "swiggy" in desc:
         return "Food"
-
-    if "uber" in desc or "ola" in desc:
+    elif "uber" in desc or "ola" in desc:
         return "Travel"
-
-    if "salary" in desc:
-        return "Income"
-
-    return "Others"
+    else:
+        return "Others"
 
 
-def extract_transactions(text):
-
+def extract_transactions(text: str):
     transactions = []
 
     lines = text.split("\n")
 
     for line in lines:
 
+        # Example:
+        # 12-Jun-2026 AMAZON 1200
         match = re.search(
-            r"(\d+\.?\d*)$",
-            line.strip()
+            r"(\d{1,2}[-/][A-Za-z]{3}[-/]\d{4})\s+(.+?)\s+(\d+\.?\d*)$",
+            line
         )
 
         if match:
 
-            amount = float(match.group(1))
+            description = match.group(2).strip()
+            amount = float(match.group(3))
 
-            description = line.replace(
-                match.group(1),
-                ""
-            ).strip()
-
-            transactions.append(
-                {
-                    "description": description,
-                    "amount": amount,
-                    "category": categorize_transaction(
-                        description
-                    )
-                }
-            )
+            transactions.append({
+                "description": description,
+                "amount": amount,
+                "category": categorize_transaction(description)
+            })
 
     return transactions
