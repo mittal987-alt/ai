@@ -12,6 +12,12 @@ from app.routes.dashboard import router as dashboard_router
 from app.routes.transaction import router as transaction_router
 from app.routes.budget import router as budget_router
 from app.routes.chat import router as chat_router
+from app.routes.goal import router as goal_router
+from app.routes.subscription import router as subscription_router
+from app.routes.analytics import router as analytics_router
+from app.routes.account import router as account_router
+from app.routes.split import router as split_router
+from app.routes.report import router as report_router
 
 # Auto-create tables (e.g. budgets table)
 Base.metadata.create_all(bind=engine)
@@ -33,6 +39,13 @@ app.include_router(dashboard_router)
 app.include_router(transaction_router)
 app.include_router(budget_router)
 app.include_router(chat_router)
+app.include_router(goal_router)
+app.include_router(subscription_router)
+app.include_router(analytics_router)
+app.include_router(account_router)
+app.include_router(split_router)
+app.include_router(report_router)
+
 
 @app.get("/")
 def root():

@@ -4,7 +4,13 @@ import {
   Pie,
   Cell,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend
 } from "recharts";
 
 function Dashboard() {
@@ -58,6 +64,53 @@ function Dashboard() {
   // Theme state
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
+  // New Features States
+  const [activeTab, setActiveTab] = useState<"overview" | "goals" | "subscriptions" | "accounts" | "calendar" | "splits">("overview");
+  const [trendsData, setTrendsData] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [detectedSubs, setDetectedSubs] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [splits, setSplits] = useState<any[]>([]);
+  const [healthScore, setHealthScore] = useState<any>(null);
+
+  // Bill Calendar State
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+
+  // Accounts Modal and Form
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [accountModalMode, setAccountModalMode] = useState<"add" | "edit">("add");
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [accountName, setAccountName] = useState("");
+  const [accountType, setAccountType] = useState("Bank");
+  const [accountBalance, setAccountBalance] = useState("0");
+
+  // Splits Modal and Form
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [splitDescription, setSplitDescription] = useState("");
+  const [splitTotal, setSplitTotal] = useState("");
+  const [splitFriend, setSplitFriend] = useState("");
+  const [splitOwed, setSplitOwed] = useState("");
+
+  // Savings Goals Modals and Forms
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalModalMode, setGoalModalMode] = useState<"add" | "edit">("add");
+  const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null);
+  const [goalName, setGoalName] = useState("");
+  const [goalTargetAmount, setGoalTargetAmount] = useState("");
+  const [goalCurrentAmount, setGoalCurrentAmount] = useState("0");
+  const [goalTargetDate, setGoalTargetDate] = useState(new Date().toISOString().split("T")[0]);
+
+  // Subscriptions Modals and Forms
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [subModalMode, setSubModalMode] = useState<"add" | "edit">("add");
+  const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
+  const [subName, setSubName] = useState("");
+  const [subAmount, setSubAmount] = useState("");
+  const [subCategory, setSubCategory] = useState("Others");
+  const [subBillingCycle, setSubBillingCycle] = useState("Monthly");
+  const [subNextDueDate, setSubNextDueDate] = useState(new Date().toISOString().split("T")[0]);
+
   const chartColors = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6"];
 
   const chartData = [
@@ -82,6 +135,13 @@ function Dashboard() {
       setTransactions([]);
       setInsights({ food: 0, travel: 0, shopping: 0, insights: [] });
       setBudgets([]);
+      setTrendsData([]);
+      setGoals([]);
+      setSubscriptions([]);
+      setDetectedSubs([]);
+      setAccounts([]);
+      setSplits([]);
+      setHealthScore(null);
       return;
     }
 
@@ -101,6 +161,13 @@ function Dashboard() {
         setTransactions([]);
         setInsights({ food: 0, travel: 0, shopping: 0, insights: [] });
         setBudgets([]);
+        setTrendsData([]);
+        setGoals([]);
+        setSubscriptions([]);
+        setDetectedSubs([]);
+        setAccounts([]);
+        setSplits([]);
+        setHealthScore(null);
         return;
       }
 
@@ -127,14 +194,83 @@ function Dashboard() {
       } else {
         setBudgets([]);
       }
+
+      // Fetch trends data
+      const trendsRes = await fetch("http://127.0.0.1:8000/analytics/trends", { headers });
+      if (trendsRes.ok) {
+        const trends = await trendsRes.json();
+        setTrendsData(trends);
+      } else {
+        setTrendsData([]);
+      }
+
+      // Fetch savings goals
+      const goalsRes = await fetch("http://127.0.0.1:8000/goals", { headers });
+      if (goalsRes.ok) {
+        const goalsData = await goalsRes.json();
+        setGoals(goalsData);
+      } else {
+        setGoals([]);
+      }
+
+      // Fetch subscriptions
+      const subsRes = await fetch("http://127.0.0.1:8000/subscriptions", { headers });
+      if (subsRes.ok) {
+        const subsData = await subsRes.json();
+        setSubscriptions(subsData);
+      } else {
+        setSubscriptions([]);
+      }
+
+      // Fetch auto-detected subscriptions
+      const detectRes = await fetch("http://127.0.0.1:8000/subscriptions/detect", { headers });
+      if (detectRes.ok) {
+        const detectData = await detectRes.json();
+        setDetectedSubs(detectData);
+      } else {
+        setDetectedSubs([]);
+      }
+
+      // Fetch accounts
+      const accountsRes = await fetch("http://127.0.0.1:8000/accounts/", { headers });
+      if (accountsRes.ok) {
+        setAccounts(await accountsRes.json());
+      } else {
+        setAccounts([]);
+      }
+
+      // Fetch splits
+      const splitsRes = await fetch("http://127.0.0.1:8000/splits/", { headers });
+      if (splitsRes.ok) {
+        setSplits(await splitsRes.json());
+      } else {
+        setSplits([]);
+      }
+
+      // Fetch health score
+      const healthRes = await fetch("http://127.0.0.1:8000/analytics/health-score", { headers });
+      if (healthRes.ok) {
+        setHealthScore(await healthRes.json());
+      } else {
+        setHealthScore(null);
+      }
+
     } catch (err) {
       console.error("Error fetching financial data:", err);
       setData({ income: 0, expense: 0, savings: 0, total_transactions: 0 });
       setTransactions([]);
       setInsights({ food: 0, travel: 0, shopping: 0, insights: [] });
       setBudgets([]);
+      setTrendsData([]);
+      setGoals([]);
+      setSubscriptions([]);
+      setDetectedSubs([]);
+      setAccounts([]);
+      setSplits([]);
+      setHealthScore(null);
     }
   };
+
 
   const checkUserProfile = async () => {
     const token = localStorage.getItem("token");
@@ -282,7 +418,302 @@ function Dashboard() {
     localStorage.removeItem("token");
     setUserEmail(null);
     alert("Logged out successfully.");
+    setTrendsData([]);
+    setGoals([]);
+    setSubscriptions([]);
+    setDetectedSubs([]);
+    setAccounts([]);
+    setSplits([]);
+    setHealthScore(null);
     loadData();
+  };
+
+  // Savings Goals Actions
+  const handleGoalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!goalName || !goalTargetAmount) return;
+    const token = localStorage.getItem("token");
+    const payload = {
+      name: goalName,
+      target_amount: parseFloat(goalTargetAmount),
+      current_amount: parseFloat(goalCurrentAmount || "0"),
+      target_date: goalTargetDate
+    };
+    const url = goalModalMode === "add"
+      ? "http://127.0.0.1:8000/goals"
+      : `http://127.0.0.1:8000/goals/${selectedGoalId}`;
+    const method = goalModalMode === "add" ? "POST" : "PUT";
+    
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setShowGoalModal(false);
+        setGoalName("");
+        setGoalTargetAmount("");
+        setGoalCurrentAmount("0");
+        setGoalTargetDate(new Date().toISOString().split("T")[0]);
+        loadData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleGoalDelete = async (goalId: number) => {
+    if (!confirm("Are you sure you want to delete this savings goal?")) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/goals/${goalId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : ""
+        }
+      });
+      if (res.ok) {
+        loadData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openEditGoalModal = (g: any) => {
+    setSelectedGoalId(g.id);
+    setGoalName(g.name);
+    setGoalTargetAmount(g.target_amount.toString());
+    setGoalCurrentAmount(g.current_amount.toString());
+    setGoalTargetDate(g.target_date);
+    setGoalModalMode("edit");
+    setShowGoalModal(true);
+  };
+
+  // Subscriptions Actions
+  const handleSubSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subName || !subAmount || !subNextDueDate) return;
+    const token = localStorage.getItem("token");
+    const payload = {
+      name: subName,
+      amount: parseFloat(subAmount),
+      category: subCategory,
+      billing_cycle: subBillingCycle,
+      next_due_date: subNextDueDate
+    };
+    const url = subModalMode === "add"
+      ? "http://127.0.0.1:8000/subscriptions"
+      : `http://127.0.0.1:8000/subscriptions/${selectedSubId}`;
+    const method = subModalMode === "add" ? "POST" : "PUT";
+    
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setShowSubModal(false);
+        setSubName("");
+        setSubAmount("");
+        setSubCategory("Others");
+        setSubBillingCycle("Monthly");
+        setSubNextDueDate(new Date().toISOString().split("T")[0]);
+        loadData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSubDelete = async (subId: number) => {
+    if (!confirm("Are you sure you want to remove this subscription?")) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/subscriptions/${subId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : ""
+        }
+      });
+      if (res.ok) {
+        loadData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openEditSubModal = (s: any) => {
+    setSelectedSubId(s.id);
+    setSubName(s.name);
+    setSubAmount(s.amount.toString());
+    setSubCategory(s.category);
+    setSubBillingCycle(s.billing_cycle);
+    setSubNextDueDate(s.next_due_date);
+    setSubModalMode("edit");
+    setShowSubModal(true);
+  };
+
+  const acceptDetectedSub = async (detected: any) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/subscriptions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify(detected)
+      });
+      if (res.ok) {
+        alert(`${detected.name} added to subscriptions successfully!`);
+        loadData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Accounts Actions
+  const handleAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountName) return;
+    const token = localStorage.getItem("token");
+    const payload = { name: accountName, account_type: accountType, balance: parseFloat(accountBalance || "0") };
+    const url = accountModalMode === "add"
+      ? "http://127.0.0.1:8000/accounts/"
+      : `http://127.0.0.1:8000/accounts/${selectedAccountId}`;
+    const method = accountModalMode === "add" ? "POST" : "PUT";
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setShowAccountModal(false);
+        setAccountName(""); setAccountType("Bank"); setAccountBalance("0");
+        loadData();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleAccountDelete = async (id: number) => {
+    if (!confirm("Delete this account?")) return;
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`http://127.0.0.1:8000/accounts/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      loadData();
+    } catch (err) { console.error(err); }
+  };
+
+  const openEditAccountModal = (a: any) => {
+    setSelectedAccountId(a.id);
+    setAccountName(a.name);
+    setAccountType(a.account_type);
+    setAccountBalance(a.balance.toString());
+    setAccountModalMode("edit");
+    setShowAccountModal(true);
+  };
+
+  // Splits Actions
+  const handleSplitSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!splitDescription || !splitTotal || !splitFriend || !splitOwed) return;
+    const token = localStorage.getItem("token");
+    const payload = {
+      description: splitDescription,
+      total_amount: parseFloat(splitTotal),
+      friend_name: splitFriend,
+      amount_owed: parseFloat(splitOwed)
+    };
+    try {
+      const res = await fetch("http://127.0.0.1:8000/splits/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setShowSplitModal(false);
+        setSplitDescription(""); setSplitTotal(""); setSplitFriend(""); setSplitOwed("");
+        loadData();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleSplitSettle = async (id: number) => {
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`http://127.0.0.1:8000/splits/${id}/settle`, {
+        method: "PUT",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      loadData();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleSplitDelete = async (id: number) => {
+    if (!confirm("Delete this split record?")) return;
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`http://127.0.0.1:8000/splits/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      loadData();
+    } catch (err) { console.error(err); }
+  };
+
+  // CSV Export
+  const handleCSVExport = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const url = `http://127.0.0.1:8000/reports/csv`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.setAttribute("download", "finance_report.csv");
+    // Add auth by creating a fetch with blob (streaming with auth header)
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.blob())
+      .then(blob => {
+        const blobUrl = window.URL.createObjectURL(blob);
+        a.href = blobUrl;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(blobUrl);
+      })
+      .catch(err => console.error("CSV export error:", err));
+  };
+
+  // Calendar Helpers
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+  const getSubscriptionDueDates = () => {
+    const dueDays: Record<number, string[]> = {};
+    subscriptions.forEach(s => {
+      if (s.next_due_date) {
+        const d = new Date(s.next_due_date);
+        if (d.getFullYear() === calendarMonth.getFullYear() && d.getMonth() === calendarMonth.getMonth()) {
+          const day = d.getDate();
+          if (!dueDays[day]) dueDays[day] = [];
+          dueDays[day].push(s.name);
+        }
+      }
+    });
+    return dueDays;
   };
 
   // Budgets Forms
@@ -555,8 +986,89 @@ function Dashboard() {
       {/* Main Grid Content */}
       <div className="max-w-7xl mx-auto px-6 mt-8">
         
-        {/* Summary Statistics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Tab Switcher */}
+        {userEmail && (
+          <div className="flex border-b border-slate-200 dark:border-slate-800 mb-8 gap-4 overflow-x-auto whitespace-nowrap scrollbar-none">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "overview"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350"
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab("goals")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "goals"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              🎯 Savings Goals ({goals.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("subscriptions")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "subscriptions"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              📅 Subscriptions & Bills ({subscriptions.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("accounts")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "accounts"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              💳 Wallets & Accounts ({accounts.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("calendar")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "calendar"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              🗓 Bill Calendar
+            </button>
+            <button
+              onClick={() => setActiveTab("splits")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "splits"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              👥 Shared Bills ({splits.filter(s => !s.is_settled).length})
+            </button>
+            <div className="ml-auto pb-3 flex items-center">
+              <button
+                onClick={handleCSVExport}
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-650 dark:text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                title="Export Transactions as CSV"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Export CSV
+              </button>
+            </div>
+          </div>
+        )}
+
+
+        {activeTab === "overview" && (
+          <>
+            {/* Summary Statistics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           
           {/* Income Card */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm p-6 hover:shadow-md hover:scale-[1.01] transition-all">
@@ -632,6 +1144,106 @@ function Dashboard() {
           </div>
 
         </div>
+
+        {/* Financial Health Score Widget */}
+        {userEmail && healthScore && (
+          <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 rounded-2xl p-6 mb-8 shadow-lg shadow-indigo-200 dark:shadow-none text-white relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white transform translate-x-16 -translate-y-16"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white transform -translate-x-12 translate-y-12"></div>
+            </div>
+            <div className="relative flex flex-col md:flex-row items-center gap-8">
+              {/* Circular Score */}
+              <div className="flex-shrink-0 flex flex-col items-center">
+                <div className="relative w-32 h-32">
+                  <svg viewBox="0 0 36 36" className="w-32 h-32 rotate-[-90deg]">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3.5" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="white" strokeWidth="3.5" strokeDasharray={`${healthScore.score}, 100`} strokeLinecap="round" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-black">{healthScore.score}</span>
+                    <span className="text-[10px] font-bold opacity-70">/ 100</span>
+                  </div>
+                </div>
+                <p className="text-xs font-bold mt-2 opacity-80 uppercase tracking-widest">
+                  {healthScore.score >= 80 ? "Excellent 🏆" : healthScore.score >= 60 ? "Good 👍" : healthScore.score >= 40 ? "Fair ⚠️" : "Needs Work 🔴"}
+                </p>
+              </div>
+
+              {/* Score Breakdown */}
+              <div className="flex-1 space-y-3">
+                <div>
+                  <h2 className="text-xl font-black mb-1">Financial Health Score</h2>
+                  <p className="text-xs text-white/70 font-medium">{healthScore.advice}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <p className="text-2xl font-black">{healthScore.savings_score}</p>
+                    <p className="text-[10px] font-bold opacity-70 mt-0.5">Savings</p>
+                    <p className="text-[9px] opacity-50">out of 40</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <p className="text-2xl font-black">{healthScore.budget_score}</p>
+                    <p className="text-[10px] font-bold opacity-70 mt-0.5">Budget</p>
+                    <p className="text-[9px] opacity-50">out of 40</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <p className="text-2xl font-black">{healthScore.goals_score}</p>
+                    <p className="text-[10px] font-bold opacity-70 mt-0.5">Goals</p>
+                    <p className="text-[9px] opacity-50">out of 20</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Monthly Trend Area Chart (Recharts) */}
+        {userEmail && trendsData && trendsData.length > 0 && (
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm p-6 mb-8 transition-colors">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-2.5">
+                <div className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Monthly Cash Flow Trends</h2>
+                  <p className="text-xs text-slate-450 dark:text-slate-550">Historical view of your monthly income and expenses</p>
+                </div>
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 320 }}>
+              <ResponsiveContainer>
+                <AreaChart
+                  data={trendsData}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:hidden" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" className="hidden dark:block" />
+                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} />
+                  <Tooltip formatter={(value) => [`₹${value}`, ""]} />
+                  <Legend verticalAlign="top" height={36} />
+                  <Area name="Income" type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
+                  <Area name="Expense" type="monotone" dataKey="expense" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* Dashboard Middle Section (3-Column Layout: Insights, Expense Share, Budgets) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -1013,8 +1625,773 @@ function Dashboard() {
             </table>
           </div>
         </div>
+          </>
+        )}
+
+        {/* Tab Content 2: Savings Goals */}
+        {activeTab === "goals" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm transition-colors">
+              <div>
+                <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100">🎯 Savings Goals</h2>
+                <p className="text-xs text-slate-450 dark:text-slate-500 font-medium mt-1">Plan and track your milestones over time.</p>
+              </div>
+              <button
+                onClick={() => {
+                  setGoalModalMode("add");
+                  setGoalName("");
+                  setGoalTargetAmount("");
+                  setGoalCurrentAmount("0");
+                  setGoalTargetDate(new Date().toISOString().split("T")[0]);
+                  setShowGoalModal(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Create Savings Goal
+              </button>
+            </div>
+
+            {goals.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {goals.map((g) => {
+                  const percentage = Math.min((g.current_amount / g.target_amount) * 100, 100);
+                  const isCompleted = g.current_amount >= g.target_amount;
+                  return (
+                    <div key={g.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-2xl shadow-sm p-6 hover:shadow-md transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-base">{g.name}</h3>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Target Date: {g.target_date}</p>
+                          </div>
+                          {isCompleted ? (
+                            <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                              ✓ Completed
+                            </span>
+                          ) : (
+                            <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                              In Progress
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mb-6">
+                          <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                            <span>Progress</span>
+                            <span>₹{g.current_amount.toLocaleString("en-IN")} / ₹{g.target_amount.toLocaleString("en-IN")}</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-850 rounded-full h-2.5 overflow-hidden">
+                            <div
+                              className="h-2.5 rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-violet-500"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-right text-[10px] text-slate-450 dark:text-slate-500 mt-1.5 font-bold">{percentage.toFixed(0)}% Saved</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 border-t border-slate-100 dark:border-slate-850 pt-4">
+                        <button
+                          onClick={() => openEditGoalModal(g)}
+                          className="flex-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-850 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-300 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                        >
+                          Log Progress / Edit
+                        </button>
+                        <button
+                          onClick={() => handleGoalDelete(g.id)}
+                          className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 text-rose-600 dark:text-rose-450 text-xs font-bold p-2 rounded-xl border border-rose-100 dark:border-rose-900/60 transition-all cursor-pointer"
+                          title="Delete Goal"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 transition-colors">
+                <div className="bg-indigo-50 dark:bg-indigo-950/40 p-4 rounded-full text-indigo-650 dark:text-indigo-400 text-2xl mb-4">
+                  🎯
+                </div>
+                <h3 className="text-base font-bold text-slate-700 dark:text-slate-350">No Savings Goals Yet</h3>
+                <p className="text-xs text-slate-450 dark:text-slate-500 mt-1 mb-6 text-center max-w-sm">
+                  Add milestones to track purchases, emergency funds, or investment goals with automated progress reporting.
+                </p>
+                <button
+                  onClick={() => {
+                    setGoalModalMode("add");
+                    setGoalName("");
+                    setGoalTargetAmount("");
+                    setGoalCurrentAmount("0");
+                    setGoalTargetDate(new Date().toISOString().split("T")[0]);
+                    setShowGoalModal(true);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-6 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  Get Started
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab Content 3: Subscriptions */}
+        {activeTab === "subscriptions" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Subscriptions List */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm transition-colors">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100">📅 Registered Subscriptions</h2>
+                  <p className="text-xs text-slate-450 dark:text-slate-500 font-medium mt-1">Track recurring expenses and monthly due dates.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSubModalMode("add");
+                    setSubName("");
+                    setSubAmount("");
+                    setSubCategory("Others");
+                    setSubBillingCycle("Monthly");
+                    setSubNextDueDate(new Date().toISOString().split("T")[0]);
+                    setShowSubModal(true);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add Subscription
+                </button>
+              </div>
+
+              {subscriptions.length > 0 ? (
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-2xl shadow-sm overflow-hidden transition-colors">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-450 dark:text-slate-550 text-xs font-bold uppercase tracking-wider">
+                          <th className="py-4 pl-6">Subscription</th>
+                          <th className="py-4">Billing Cycle</th>
+                          <th className="py-4">Next Due Date</th>
+                          <th className="py-4 text-right pr-6">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50 dark:divide-slate-850 text-sm font-medium text-slate-755 dark:text-slate-300">
+                        {subscriptions.map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors group">
+                            <td className="py-4 pl-6">
+                              <div>
+                                <p className="font-extrabold text-slate-800 dark:text-slate-150">{s.name}</p>
+                                <p className="text-[10px] text-slate-450 dark:text-slate-500 uppercase font-bold tracking-wider">{s.category}</p>
+                              </div>
+                            </td>
+                            <td className="py-4 text-xs font-bold text-slate-550 dark:text-slate-400">
+                              <span className="bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">{s.billing_cycle}</span>
+                            </td>
+                            <td className="py-4 text-xs text-slate-650 dark:text-slate-350">{s.next_due_date}</td>
+                            <td className="py-4 text-right pr-6 font-extrabold text-slate-800 dark:text-slate-200">
+                              <span className="mr-6">₹{s.amount?.toLocaleString("en-IN") || 0}</span>
+                              <span className="inline-flex gap-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => openEditSubModal(s)}
+                                  className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                                  title="Edit Subscription"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.128-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleSubDelete(s.id)}
+                                  className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                                  title="Remove Subscription"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 9m-4.72 0-.34-9m9.03-3.03a17.902 17.902 0 0 1-1.07 3.5M18.13 6a22.09 22.09 0 0 0-1.85-.3M14.74 9a22.38 22.38 0 0 0-5.48 0M10.5 6.857V5.07c0-.704.57-1.286 1.27-1.286h2.46c.7 0 1.27.582 1.27 1.286v1.787M3.75 6a17.925 17.925 0 0 1 1.07-3.5M6.37 6a22.09 22.09 0 0 1 1.85-.3M6.37 6a22.38 22.38 0 0 1 5.48 0" />
+                                  </svg>
+                                </button>
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-850 transition-colors">
+                  <p className="text-sm text-slate-450 dark:text-slate-550 font-medium">No recurring subscriptions registered yet.</p>
+                </div>
+              )}
+            </div>
+
+            {/* AI Auto-Detection Panel */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm flex flex-col justify-between h-fit transition-colors">
+              <div>
+                <div className="flex items-center gap-2.5 mb-6">
+                  <div className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 21l8.982-11.861H13.62l.818-5.096L5.5 15.904h4.313Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Recurring Suggestions</h3>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Auto-detected from transaction history</p>
+                  </div>
+                </div>
+
+                {detectedSubs && detectedSubs.length > 0 ? (
+                  <div className="space-y-4">
+                    {detectedSubs.map((d, idx) => (
+                      <div key={idx} className="bg-slate-50 dark:bg-slate-950/50 p-4 border border-slate-100 dark:border-slate-850 rounded-xl flex justify-between items-center transition-all hover:scale-[1.01]">
+                        <div>
+                          <p className="font-bold text-xs text-slate-750 dark:text-slate-200">{d.name}</p>
+                          <p className="text-[10px] text-indigo-650 dark:text-indigo-455 font-extrabold mt-0.5">₹{d.amount}/month</p>
+                          <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold mt-1">Est. Due: {d.next_due_date}</p>
+                        </div>
+                        <button
+                          onClick={() => acceptDetectedSub(d)}
+                          className="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900 border border-indigo-100 dark:border-indigo-900 text-indigo-650 dark:text-indigo-400 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer"
+                        >
+                          + Track
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 dark:bg-slate-955/10 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                    <p className="text-xs text-slate-550 dark:text-slate-400 font-medium text-center px-4">No recurring patterns detected yet.</p>
+                    <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-1.5 text-center px-4">Upload more monthly statements to activate automatic detection.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Wallets & Accounts */}
+        {activeTab === "accounts" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm">
+              <div>
+                <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100">💳 Wallets & Accounts</h2>
+                <p className="text-xs text-slate-450 dark:text-slate-500 font-medium mt-1">Manage your bank accounts, cards, and wallets.</p>
+              </div>
+              <button
+                onClick={() => { setAccountModalMode("add"); setAccountName(""); setAccountType("Bank"); setAccountBalance("0"); setShowAccountModal(true); }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Add Account
+              </button>
+            </div>
+
+            {accounts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {accounts.map((a: any) => {
+                  const typeColors: Record<string, string> = {
+                    Bank: "from-indigo-500 to-blue-600",
+                    "Credit Card": "from-rose-500 to-pink-600",
+                    Cash: "from-emerald-500 to-teal-600",
+                    "UPI Wallet": "from-amber-500 to-orange-600"
+                  };
+                  const gradient = typeColors[a.account_type] || "from-slate-500 to-slate-700";
+                  return (
+                    <div key={a.id} className={`bg-gradient-to-br ${gradient} rounded-2xl p-6 text-white shadow-lg hover:scale-[1.02] transition-all relative overflow-hidden`}>
+                      <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 transform translate-x-10 -translate-y-10"></div>
+                      <div className="flex justify-between items-start mb-8">
+                        <div>
+                          <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{a.account_type}</p>
+                          <h3 className="text-lg font-black mt-1">{a.name}</h3>
+                        </div>
+                        <div className="flex gap-2 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEditAccountModal(a)} className="text-white/70 hover:text-white cursor-pointer" title="Edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.128-1.897L16.863 4.487Z" />
+                            </svg>
+                          </button>
+                          <button onClick={() => handleAccountDelete(a.id)} className="text-white/70 hover:text-white cursor-pointer" title="Delete">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 9m-4.72 0-.34-9M9.172 6.857V5.07c0-.704.57-1.286 1.27-1.286h2.46c.7 0 1.27.582 1.27 1.286v1.787M3.75 6a17.9 17.9 0 0 1 16.5 0" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1">Balance</p>
+                        <p className="text-3xl font-black">₹{a.balance?.toLocaleString("en-IN") || 0}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                <div className="text-4xl mb-4">💳</div>
+                <h3 className="text-base font-bold text-slate-700 dark:text-slate-350">No Accounts Added Yet</h3>
+                <p className="text-xs text-slate-450 dark:text-slate-500 mt-1 mb-6 text-center max-w-sm">Add bank accounts, credit cards or wallets to track balances in one place.</p>
+                <button
+                  onClick={() => { setAccountModalMode("add"); setAccountName(""); setAccountType("Bank"); setAccountBalance("0"); setShowAccountModal(true); }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-6 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  Add First Account
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Bill Calendar */}
+        {activeTab === "calendar" && (() => {
+          const year = calendarMonth.getFullYear();
+          const month = calendarMonth.getMonth();
+          const daysInMonth = getDaysInMonth(year, month);
+          const firstDay = getFirstDayOfMonth(year, month);
+          const dueDates = getSubscriptionDueDates();
+          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const today = new Date();
+
+          return (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 p-2 rounded-xl cursor-pointer transition-all"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-slate-600 dark:text-slate-300">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                      </svg>
+                    </button>
+                    <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100">
+                      {calendarMonth.toLocaleString("default", { month: "long", year: "numeric" })}
+                    </h2>
+                    <button
+                      onClick={() => setCalendarMonth(new Date(year, month + 1, 1))}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 p-2 rounded-xl cursor-pointer transition-all"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-slate-600 dark:text-slate-300">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span> Bill Due</span>
+                    <span className="flex items-center gap-1.5 ml-4"><span className="w-3 h-3 rounded-full bg-rose-400 inline-block"></span> Today</span>
+                  </div>
+                </div>
+
+                {/* Day Names */}
+                <div className="grid grid-cols-7 mb-2">
+                  {dayNames.map(d => (
+                    <div key={d} className="text-center text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 py-2">{d}</div>
+                  ))}
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: firstDay }).map((_, i) => (
+                    <div key={`empty-${i}`} className="h-16 rounded-xl"></div>
+                  ))}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+                    const bills = dueDates[day] || [];
+                    return (
+                      <div
+                        key={day}
+                        className={`h-16 rounded-xl border p-1.5 flex flex-col transition-all ${
+                          isToday
+                            ? "border-rose-400 bg-rose-50 dark:bg-rose-950/20"
+                            : bills.length > 0
+                            ? "border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/20"
+                            : "border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900"
+                        }`}
+                      >
+                        <span className={`text-xs font-extrabold ${isToday ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-400"}`}>{day}</span>
+                        <div className="flex flex-col gap-0.5 mt-0.5 overflow-hidden">
+                          {bills.slice(0, 2).map((b, idx) => (
+                            <span key={idx} className="text-[7px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-950/60 px-1 rounded truncate">{b}</span>
+                          ))}
+                          {bills.length > 2 && <span className="text-[7px] text-slate-400">+{bills.length - 2} more</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {subscriptions.length === 0 && (
+                <div className="text-center py-10 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                  <p className="text-sm text-slate-450 dark:text-slate-550 font-medium">No subscriptions tracked yet. Go to Subscriptions tab to add them.</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Tab: Shared Bills / Expense Splitter */}
+        {activeTab === "splits" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm">
+              <div>
+                <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100">👥 Shared Bills</h2>
+                <p className="text-xs text-slate-450 dark:text-slate-500 font-medium mt-1">
+                  Total owed to you: <strong className="text-emerald-600 dark:text-emerald-400">₹{splits.filter(s => !s.is_settled).reduce((sum: number, s: any) => sum + s.amount_owed, 0).toLocaleString("en-IN")}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => { setSplitDescription(""); setSplitTotal(""); setSplitFriend(""); setSplitOwed(""); setShowSplitModal(true); }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Record Split
+              </button>
+            </div>
+
+            {splits.length > 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-2xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-450 dark:text-slate-550 text-xs font-bold uppercase tracking-wider">
+                        <th className="py-4 pl-6">Description</th>
+                        <th className="py-4">Friend</th>
+                        <th className="py-4">Total Bill</th>
+                        <th className="py-4">They Owe</th>
+                        <th className="py-4 text-center">Status</th>
+                        <th className="py-4 pr-6 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
+                      {splits.map((s: any) => (
+                        <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors">
+                          <td className="py-4 pl-6 font-semibold text-slate-800 dark:text-slate-200 text-sm">{s.description}</td>
+                          <td className="py-4 text-sm font-bold text-slate-600 dark:text-slate-350">{s.friend_name}</td>
+                          <td className="py-4 text-sm text-slate-550 dark:text-slate-400">₹{s.total_amount?.toLocaleString("en-IN")}</td>
+                          <td className="py-4 font-extrabold text-indigo-600 dark:text-indigo-400 text-sm">₹{s.amount_owed?.toLocaleString("en-IN")}</td>
+                          <td className="py-4 text-center">
+                            {s.is_settled ? (
+                              <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full">✓ Settled</span>
+                            ) : (
+                              <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-[10px] font-bold px-2.5 py-1 rounded-full">Pending</span>
+                            )}
+                          </td>
+                          <td className="py-4 pr-6 text-right">
+                            <div className="flex justify-end gap-2">
+                              {!s.is_settled && (
+                                <button
+                                  onClick={() => handleSplitSettle(s.id)}
+                                  className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-all"
+                                >
+                                  Settle Up
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleSplitDelete(s.id)}
+                                className="text-slate-400 hover:text-rose-600 cursor-pointer p-1"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 9m-4.72 0-.34-9M9.172 6.857V5.07c0-.704.57-1.286 1.27-1.286h2.46c.7 0 1.27.582 1.27 1.286v1.787M3.75 6a17.9 17.9 0 0 1 16.5 0" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                <div className="text-4xl mb-4">👥</div>
+                <h3 className="text-base font-bold text-slate-700 dark:text-slate-350">No Splits Recorded</h3>
+                <p className="text-xs text-slate-450 dark:text-slate-500 mt-1 mb-6 text-center max-w-sm">Track shared expenses for dinners, rent, trips, and more.</p>
+                <button
+                  onClick={() => { setSplitDescription(""); setSplitTotal(""); setSplitFriend(""); setSplitOwed(""); setShowSplitModal(true); }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-6 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  Record First Split
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
+
+      {/* Account Add/Edit Modal */}
+      {showAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 max-w-md w-full p-8 relative">
+            <button onClick={() => setShowAccountModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-855 p-1.5 rounded-lg cursor-pointer bg-transparent border-none">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                {accountModalMode === "add" ? "Add Account" : "Edit Account"}
+              </h3>
+              <p className="text-xs text-slate-550 dark:text-slate-450 mt-1">Track balance across your wallets and bank accounts</p>
+            </div>
+            <form onSubmit={handleAccountSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Account Name</label>
+                <input type="text" required value={accountName} onChange={e => setAccountName(e.target.value)} placeholder="e.g. HDFC Savings" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Account Type</label>
+                  <select value={accountType} onChange={e => setAccountType(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100 cursor-pointer">
+                    <option value="Bank">Bank</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Cash">Cash</option>
+                    <option value="UPI Wallet">UPI Wallet</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Balance (₹)</label>
+                  <input type="number" value={accountBalance} onChange={e => setAccountBalance(e.target.value)} placeholder="0" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-550 text-slate-850 dark:text-slate-100" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all text-sm mt-4 cursor-pointer">
+                {accountModalMode === "add" ? "Add Account" : "Save Changes"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Split Expense Modal */}
+      {showSplitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 max-w-md w-full p-8 relative">
+            <button onClick={() => setShowSplitModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 p-1.5 rounded-lg cursor-pointer bg-transparent border-none">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">Record Split Bill</h3>
+              <p className="text-xs text-slate-550 dark:text-slate-450 mt-1">Track shared expenses with friends or housemates</p>
+            </div>
+            <form onSubmit={handleSplitSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Description</label>
+                <input type="text" required value={splitDescription} onChange={e => setSplitDescription(e.target.value)} placeholder="e.g. Group Dinner at Barbeque Nation" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Total Bill (₹)</label>
+                  <input type="number" required value={splitTotal} onChange={e => setSplitTotal(e.target.value)} placeholder="2500" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Friend's Name</label>
+                  <input type="text" required value={splitFriend} onChange={e => setSplitFriend(e.target.value)} placeholder="Rahul" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Amount They Owe You (₹)</label>
+                <input type="number" required value={splitOwed} onChange={e => setSplitOwed(e.target.value)} placeholder="1250" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100" />
+              </div>
+              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all text-sm mt-4 cursor-pointer">
+                Record Split
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Savings Goal Add/Edit Modal */}
+      {showGoalModal && (
+
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 max-w-md w-full p-8 relative overflow-hidden animate-scale-up">
+            <button
+              onClick={() => setShowGoalModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-855 p-1.5 rounded-lg transition-all cursor-pointer animate-none bg-transparent border-none"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent inline-block">
+                {goalModalMode === "add" ? "Create Savings Goal" : "Edit Savings Goal"}
+              </h3>
+              <p className="text-xs text-slate-550 dark:text-slate-450 font-medium mt-1">
+                Define savings targets and track milestone progress
+              </p>
+            </div>
+
+            <form onSubmit={handleGoalSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Goal Name</label>
+                <input
+                  type="text"
+                  required
+                  value={goalName}
+                  onChange={(e) => setGoalName(e.target.value)}
+                  placeholder="e.g. New Macbook Pro"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Target Amount (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    value={goalTargetAmount}
+                    onChange={(e) => setGoalTargetAmount(e.target.value)}
+                    placeholder="1,50,050"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-550 text-slate-850 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Current Saved (₹)</label>
+                  <input
+                    type="number"
+                    value={goalCurrentAmount}
+                    onChange={(e) => setGoalCurrentAmount(e.target.value)}
+                    placeholder="15,000"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-550 text-slate-855 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Target Date</label>
+                <input
+                  type="date"
+                  required
+                  value={goalTargetDate}
+                  onChange={(e) => setGoalTargetDate(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all text-sm mt-4 flex items-center justify-center cursor-pointer"
+              >
+                {goalModalMode === "add" ? "Create Goal" : "Save Changes"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Add/Edit Modal */}
+      {showSubModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 max-w-md w-full p-8 relative overflow-hidden animate-scale-up">
+            <button
+              onClick={() => setShowSubModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-855 p-1.5 rounded-lg transition-all cursor-pointer animate-none bg-transparent border-none"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent inline-block">
+                {subModalMode === "add" ? "Register Subscription" : "Edit Subscription"}
+              </h3>
+              <p className="text-xs text-slate-550 dark:text-slate-450 font-medium mt-1">
+                Track monthly or yearly recurring bills
+              </p>
+            </div>
+
+            <form onSubmit={handleSubSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Subscription Name</label>
+                <input
+                  type="text"
+                  required
+                  value={subName}
+                  onChange={(e) => setSubName(e.target.value)}
+                  placeholder="e.g. Netflix Premium"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Amount (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    value={subAmount}
+                    onChange={(e) => setSubAmount(e.target.value)}
+                    placeholder="649.00"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-550 text-slate-850 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Category</label>
+                  <select
+                    value={subCategory}
+                    onChange={(e) => setSubCategory(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-slate-100 cursor-pointer"
+                  >
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Billing Cycle</label>
+                  <select
+                    value={subBillingCycle}
+                    onChange={(e) => setSubBillingCycle(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-550 text-slate-855 dark:text-slate-100 cursor-pointer"
+                  >
+                    <option value="Monthly">Monthly</option>
+                    <option value="Yearly">Yearly</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Next Due Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={subNextDueDate}
+                    onChange={(e) => setSubNextDueDate(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-555 text-slate-850 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all text-sm mt-4 flex items-center justify-center cursor-pointer"
+              >
+                {subModalMode === "add" ? "Track Subscription" : "Save Changes"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Floating Chatbot Bubble & Widget */}
       {userEmail && (
