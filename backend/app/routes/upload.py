@@ -1,7 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, Depends, Header
+from fastapi import APIRouter, UploadFile, File, Depends
 from sqlalchemy.orm import Session
-from jose import jwt, JWTError
-from datetime import datetime, date
+from datetime import date
 import pdfplumber
 import tempfile
 import os
@@ -12,11 +11,9 @@ from pdf2image import convert_from_path
 from app.database import SessionLocal
 from app.models import Transaction, User
 from app.services.parser import extract_transactions
+from app.services.auth import get_current_user
 
 router = APIRouter()
-
-SECRET_KEY = "finance_secret_key"
-ALGORITHM = "HS256"
 
 # Initialize EasyOCR reader once globally to save memory and processing time
 reader = easyocr.Reader(['en'])
@@ -46,7 +43,7 @@ def ocr_extract_text(pdf_path: str) -> str:
 @router.post("/upload-statement")
 async def upload_statement(
     file: UploadFile = File(...),
-    authorization: str = Header(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # ---------- Validate File ----------
@@ -60,37 +57,6 @@ async def upload_statement(
         return {
             "success": False,
             "message": "Only PDF files are allowed."
-        }
-
-    # ---------- Verify JWT ----------
-    try:
-        token = authorization.replace("Bearer ", "")
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
-        email = payload.get("sub")
-        if not email:
-            raise JWTError()
-
-        user = (
-            db.query(User)
-            .filter(User.email == email)
-            .first()
-        )
-
-        if not user:
-            return {
-                "success": False,
-                "message": "User not found."
-            }
-
-    except JWTError:
-        return {
-            "success": False,
-            "message": "Invalid or expired token."
         }
 
     # ---------- Save uploaded PDF ----------
@@ -144,12 +110,15 @@ async def upload_statement(
         skipped = 0
 
         for tx in transactions:
+            tx_date = tx.get("date") or date.today()
+
             duplicate = (
                 db.query(Transaction)
                 .filter(
-                    Transaction.user_id == user.id,
+                    Transaction.user_id == current_user.id,
                     Transaction.description == tx["description"],
-                    Transaction.amount == tx["amount"]
+                    Transaction.amount == tx["amount"],
+                    Transaction.transaction_date == tx_date
                 )
                 .first()
             )
@@ -165,20 +134,8 @@ async def upload_statement(
             if any(k in desc for k in ["/CR/", "SALARY", "CREDIT", "DEPOSIT"]):
                 transaction_type = "income"
 
-            # Parse string date from parser safely into an actual SQL-compatible date object
-            tx_date = date.today() 
-            if tx.get("date"):
-                clean_date_str = tx["date"].replace(".", "-").replace("/", "-")
-                try:
-                    if len(clean_date_str.split("-")[-1]) == 4:
-                        tx_date = datetime.strptime(clean_date_str, "%d-%m-%Y").date()
-                    else:
-                        tx_date = datetime.strptime(clean_date_str, "%d-%m-%y").date()
-                except ValueError:
-                    pass
-
             transaction = Transaction(
-                user_id=user.id,
+                user_id=current_user.id,
                 transaction_date=tx_date,
                 description=tx["description"],
                 amount=float(tx["amount"]),

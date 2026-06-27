@@ -41,3 +41,16 @@ class UploadedDocument(Base):
         DateTime(timezone=True),
         server_default=func.now()
     )
+
+class Budget(Base):
+    __tablename__ = "budgets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    category = Column(String(100))
+    amount = Column(Float)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )

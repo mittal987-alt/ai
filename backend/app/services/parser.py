@@ -1,62 +1,57 @@
 import re
+from datetime import datetime, date
+
+CATEGORY_KEYWORDS = {
+    "Shopping": ["amazon", "flipkart", "myntra"],
+    "Food": ["zomato", "swiggy"],
+    "Travel": ["uber", "ola"],
+    "Fuel": ["petrol"],
+    "UPI": ["phonepe", "gpay", "paytm", "upi"],
+    "Cash": ["atm"],
+    "Income": ["salary"]
+}
 
 def categorize_transaction(description: str) -> str:
     desc = description.lower()
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        if any(keyword in desc for keyword in keywords):
+            return category
+    return "Others"
 
-    if "amazon" in desc:
-        return "Shopping"
-    elif "flipkart" in desc:
-        return "Shopping"
-    elif "myntra" in desc:
-        return "Shopping"
-    elif "zomato" in desc:
-        return "Food"
-    elif "swiggy" in desc:
-        return "Food"
-    elif "uber" in desc:
-        return "Travel"
-    elif "ola" in desc:
-        return "Travel"
-    elif "petrol" in desc:
-        return "Fuel"
-    elif "phonepe" in desc:
-        return "UPI"
-    elif "gpay" in desc:
-        return "UPI"
-    elif "paytm" in desc:
-        return "UPI"
-    elif "upi" in desc:
-        return "UPI"
-    elif "atm" in desc:
-        return "Cash"
-    elif "salary" in desc:
-        return "Income"
-    else:
-        return "Others"
-
-import re
+def parse_date_string(date_str: str) -> date:
+    """
+    Safely parse a date string with dots, slashes, or dashes (e.g. 28.08.22, 28/08/2022)
+    into a datetime.date object.
+    """
+    clean_date_str = re.sub(r"\s+", "", date_str).replace(".", "-").replace("/", "-")
+    try:
+        parts = clean_date_str.split("-")
+        if len(parts) == 3:
+            if len(parts[2]) == 4:
+                return datetime.strptime(clean_date_str, "%d-%m-%Y").date()
+            else:
+                return datetime.strptime(clean_date_str, "%d-%m-%y").date()
+    except (ValueError, IndexError):
+        pass
+    return date.today()
 
 def extract_transactions(text: str) -> list:
     transactions = []
 
     # Global regex pattern:
-    # 1. (\d{2}\s*[./-]\s*\d{2}\s*[./-]\s*\d{2,4}) -> Matches dates even if OCR leaves spaces inside them (like "28. 08.22" or "01 .08.22")
-    # 2. ([\s\n]*UPL|[\s\n]*UPI|[\s\n]*SBILTO.*?) -> Matches the start of transaction descriptions
-    # 3. (.*?) -> Captures the multi-line description text dynamically across newlines
-    # 4. ([\d,]+\.\d{2}) -> Captures the amount located at the end of the block
+    # 1. (\d{2}\s*[./-]\s*\d{2}\s*[./-]\s*\d{2,4}) -> Matches dates even if OCR leaves spaces inside them
+    # 2. (.*?) -> Captures description text dynamically across newlines
+    # 3. (-?[\d,]+\.\d{2}) -> Captures amount located at the end of the block
     pattern = r"(\d{2}\s*[./-]\s*\d{2}\s*[./-]\s*\d{2,4})\s+(.*?)\s+(-?[\d,]+\.\d{2})"
     
-    # We find all matches across the entire raw text string at once
     matches = re.finditer(pattern, text, re.DOTALL | re.IGNORECASE)
 
     for match in matches:
-        # Clean up any weird OCR internal spacing inside the extracted date
         date_raw = match.group(1).strip()
-        date_str = re.sub(r"\s+", "", date_raw) 
+        date_obj = parse_date_string(date_raw)
         
-        # Clean up the multi-line or messy description text
         description = match.group(2).strip()
-        description = re.sub(r"\s+", " ", description)  # Flatten multi-line spacing to a single row
+        description = re.sub(r"\s+", " ", description)  # Flatten multi-line spacing
         
         amount_str = match.group(3).replace(",", "")
 
@@ -70,7 +65,7 @@ def extract_transactions(text: str) -> list:
                 continue
 
             transactions.append({
-                "date": date_str,
+                "date": date_obj,
                 "description": description,
                 "amount": amount,
                 "category": categorize_transaction(description),
@@ -86,7 +81,8 @@ def extract_transactions(text: str) -> list:
             # Catch lines that look like: "01.09.22   UPL/CR/..."
             match = re.search(r"(\d{2}\s*[./-]\s*\d{2}\s*[./-]\s*\d{2,4})\s+(.*)", line)
             if match:
-                date_str = re.sub(r"\s+", "", match.group(1).strip())
+                date_raw = match.group(1).strip()
+                date_obj = parse_date_string(date_raw)
                 desc = match.group(2).strip()
                 
                 # Check if the next line or line after contains the numerical amount
@@ -98,7 +94,7 @@ def extract_transactions(text: str) -> list:
                             try:
                                 amt = abs(float(amt_match.group(1).replace(",", "")))
                                 transactions.append({
-                                    "date": date_str,
+                                    "date": date_obj,
                                     "description": desc,
                                     "amount": amt,
                                     "category": categorize_transaction(desc),
@@ -112,4 +108,4 @@ def extract_transactions(text: str) -> list:
     print(transactions)
     print("=" * 60)
 
-    return transactions     
+    return transactions
