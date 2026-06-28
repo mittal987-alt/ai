@@ -1,20 +1,40 @@
 import { Routes, Route } from "react-router-dom";
+import { FinanceProvider } from "./context/FinanceContext";
+import Layout from "./components/Layout";
 
-import Dashboard from "./pages/Dashboard";
+import Overview from "./pages/Overview";
+import Goals from "./pages/Goals";
+import Subscriptions from "./pages/Subscriptions";
+import Accounts from "./pages/Accounts";
+import Calendar from "./pages/Calendar";
+import Splits from "./pages/Splits";
+import Tax from "./pages/Tax";
+import Planner from "./pages/Planner";
+import Achievements from "./pages/Achievements";
+import RecurringTransactions from "./pages/RecurringTransactions";
+import Investments from "./pages/Investments";
+import Loans from "./pages/Loans";
 
 function App() {
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={<Dashboard />}
-      />
-
-      <Route
-        path="/dashboard"
-        element={<Dashboard />}
-      />
-    </Routes>
+    <FinanceProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/"              element={<Overview />} />
+          <Route path="/goals"         element={<Goals />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
+          <Route path="/accounts"      element={<Accounts />} />
+          <Route path="/calendar"      element={<Calendar />} />
+          <Route path="/splits"        element={<Splits />} />
+          <Route path="/tax"           element={<Tax />} />
+          <Route path="/planner"       element={<Planner />} />
+          <Route path="/achievements"  element={<Achievements />} />
+          <Route path="/recurring"     element={<RecurringTransactions />} />
+          <Route path="/investments"   element={<Investments />} />
+          <Route path="/loans"         element={<Loans />} />
+        </Route>
+      </Routes>
+    </FinanceProvider>
   );
 }
 

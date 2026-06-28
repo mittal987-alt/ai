@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Date, Boolean
 from sqlalchemy.sql import func
 
@@ -24,6 +23,9 @@ class Transaction(Base):
     transaction_date = Column(Date)
     description = Column(String(255))
     amount = Column(Float)
+    currency = Column(String(10), default="USD")
+    original_amount = Column(Float, nullable=True)
+    exchange_rate = Column(Float, default=1.0)
 
     category = Column(String(100))
     transaction_type = Column(String(20))  # income/expense
@@ -106,4 +108,65 @@ class SharedExpense(Base):
     amount_owed = Column(Float)  # Amount the friend owes the user
     is_settled = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
+
+class PaymentReminder(Base):
+    __tablename__ = "payment_reminders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String(100))
+    amount = Column(Float)
+    due_date = Column(Date)
+    category = Column(String(100), default="Others")
+    is_paid = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class RecurringTransaction(Base):
+    """Auto-generates transactions on a fixed schedule."""
+    __tablename__ = "recurring_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    description = Column(String(255))
+    amount = Column(Float)
+    category = Column(String(100))
+    transaction_type = Column(String(20))  # income / expense
+    frequency = Column(String(50))         # daily / weekly / monthly / yearly
+    next_date = Column(Date)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Investment(Base):
+    """Investment portfolio: Stocks, MF, FD, PPF, Gold, Crypto, Others."""
+    __tablename__ = "investments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String(200))
+    investment_type = Column(String(100))  # Stocks, Mutual Fund, FD, PPF, Gold, Crypto, Others
+    invested_amount = Column(Float)
+    current_value = Column(Float)
+    units = Column(Float, nullable=True)
+    purchase_price = Column(Float, nullable=True)
+    current_price = Column(Float, nullable=True)
+    purchase_date = Column(Date)
+    notes = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Loan(Base):
+    """Loan / EMI tracker."""
+    __tablename__ = "loans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String(200))
+    loan_type = Column(String(100))        # Home, Car, Personal, Education, Business, Others
+    principal_amount = Column(Float)
+    interest_rate = Column(Float)          # Annual rate in %
+    tenure_months = Column(Integer)
+    start_date = Column(Date)
+    emi_amount = Column(Float)
+    outstanding_amount = Column(Float)
+    lender_name = Column(String(200), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

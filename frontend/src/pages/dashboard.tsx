@@ -65,7 +65,7 @@ function Dashboard() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   // New Features States
-  const [activeTab, setActiveTab] = useState<"overview" | "goals" | "subscriptions" | "accounts" | "calendar" | "splits">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "goals" | "subscriptions" | "accounts" | "calendar" | "splits" | "tax" | "planner" | "achievements">("overview");
   const [trendsData, setTrendsData] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -73,6 +73,30 @@ function Dashboard() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [splits, setSplits] = useState<any[]>([]);
   const [healthScore, setHealthScore] = useState<any>(null);
+  // Feature 1: Alerts
+  const [alertsData, setAlertsData] = useState<any>(null);
+  const [showAlertsPanel, setShowAlertsPanel] = useState(false);
+  // Feature 3: Tax Estimator
+  const [taxData, setTaxData] = useState<any>(null);
+  // Feature 4: Budget Planner
+  const [budgetPlan, setBudgetPlan] = useState<any>(null);
+  const [applyingPlan, setApplyingPlan] = useState(false);
+  // Feature 5: Net Worth
+  const [netWorth, setNetWorth] = useState<any>(null);
+  // Feature 6: Payment Reminders
+  const [reminders, setReminders] = useState<any[]>([]);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [reminderName, setReminderName] = useState("");
+  const [reminderAmount, setReminderAmount] = useState("");
+  const [reminderDueDate, setReminderDueDate] = useState(new Date().toISOString().split("T")[0]);
+  const [reminderCategory, setReminderCategory] = useState("Others");
+  // Feature 7: Auto-Categorize
+  const [autoCatResult, setAutoCatResult] = useState<any>(null);
+  const [isAutoCatting, setIsAutoCatting] = useState(false);
+  // Feature 8: Heatmap
+  const [heatmapData, setHeatmapData] = useState<any>(null);
+  // Feature 9: Gamification
+  const [gamificationData, setGamificationData] = useState<any>(null);
 
   // Bill Calendar State
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -255,6 +279,35 @@ function Dashboard() {
         setHealthScore(null);
       }
 
+      // Fetch alerts
+      const alertsRes = await fetch("http://127.0.0.1:8000/alerts", { headers });
+      if (alertsRes.ok) setAlertsData(await alertsRes.json());
+
+      // Fetch tax estimate
+      const taxRes = await fetch("http://127.0.0.1:8000/tax/estimate", { headers });
+      if (taxRes.ok) setTaxData(await taxRes.json());
+
+      // Fetch budget plan
+      const planRes = await fetch("http://127.0.0.1:8000/budget/plan", { headers });
+      if (planRes.ok) setBudgetPlan(await planRes.json());
+
+      // Fetch net worth
+      const nwRes = await fetch("http://127.0.0.1:8000/networth", { headers });
+      if (nwRes.ok) setNetWorth(await nwRes.json());
+
+      // Fetch payment reminders
+      const remRes = await fetch("http://127.0.0.1:8000/reminders", { headers });
+      if (remRes.ok) setReminders(await remRes.json());
+      else setReminders([]);
+
+      // Fetch spending heatmap
+      const hmRes = await fetch("http://127.0.0.1:8000/analytics/daily-spend", { headers });
+      if (hmRes.ok) setHeatmapData(await hmRes.json());
+
+      // Fetch gamification stats
+      const gameRes = await fetch("http://127.0.0.1:8000/gamification/stats", { headers });
+      if (gameRes.ok) setGamificationData(await gameRes.json());
+
     } catch (err) {
       console.error("Error fetching financial data:", err);
       setData({ income: 0, expense: 0, savings: 0, total_transactions: 0 });
@@ -268,6 +321,13 @@ function Dashboard() {
       setAccounts([]);
       setSplits([]);
       setHealthScore(null);
+      setAlertsData(null);
+      setTaxData(null);
+      setBudgetPlan(null);
+      setNetWorth(null);
+      setReminders([]);
+      setHeatmapData(null);
+      setGamificationData(null);
     }
   };
 
@@ -425,7 +485,95 @@ function Dashboard() {
     setAccounts([]);
     setSplits([]);
     setHealthScore(null);
+    setAlertsData(null);
+    setTaxData(null);
+    setBudgetPlan(null);
+    setNetWorth(null);
+    setReminders([]);
+    setHeatmapData(null);
+    setGamificationData(null);
     loadData();
+  };
+
+  // Payment Reminder Actions
+  const handleReminderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reminderName || !reminderAmount || !reminderDueDate) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ name: reminderName, amount: parseFloat(reminderAmount), due_date: reminderDueDate, category: reminderCategory })
+      });
+      if (res.ok) {
+        setShowReminderModal(false);
+        setReminderName(""); setReminderAmount(""); setReminderCategory("Others");
+        loadData();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleReminderPay = async (id: number) => {
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`http://127.0.0.1:8000/reminders/${id}/pay`, {
+        method: "PUT",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      loadData();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleReminderDelete = async (id: number) => {
+    if (!confirm("Delete this reminder?")) return;
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`http://127.0.0.1:8000/reminders/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      loadData();
+    } catch (err) { console.error(err); }
+  };
+
+  // Auto-Categorize Action
+  const handleAutoCategorize = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setIsAutoCatting(true);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/transactions/auto-categorize", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+      setAutoCatResult(result);
+      loadData();
+    } catch (err) { console.error(err); }
+    finally { setIsAutoCatting(false); }
+  };
+
+  // Apply Budget Plan Action
+  const handleApplyBudgetPlan = async () => {
+    if (!budgetPlan || !budgetPlan.plan) return;
+    const token = localStorage.getItem("token");
+    if (!confirm(`Apply suggested budgets for ${budgetPlan.plan.length} categories? This will create new budget entries.`)) return;
+    setApplyingPlan(true);
+    try {
+      for (const item of budgetPlan.plan) {
+        if (item.suggested_budget > 0) {
+          await fetch("http://127.0.0.1:8000/budgets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+            body: JSON.stringify({ category: item.category, amount: item.suggested_budget })
+          });
+        }
+      }
+      alert("Budget plan applied successfully!");
+      loadData();
+    } catch (err) { console.error(err); }
+    finally { setApplyingPlan(false); }
   };
 
   // Savings Goals Actions
@@ -951,6 +1099,49 @@ function Dashboard() {
             {/* Authentication Header Widget */}
             {userEmail ? (
               <div className="flex items-center gap-3">
+                {/* Alerts Bell */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAlertsPanel(!showAlertsPanel)}
+                    className="relative p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-slate-600 dark:text-slate-300 cursor-pointer"
+                    title="Smart Alerts"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                    </svg>
+                    {alertsData && alertsData.critical_count > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
+                        {alertsData.critical_count}
+                      </span>
+                    )}
+                    {alertsData && alertsData.critical_count === 0 && alertsData.warning_count > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                        {alertsData.warning_count}
+                      </span>
+                    )}
+                  </button>
+                  {/* Alerts Dropdown Panel */}
+                  {showAlertsPanel && alertsData && (
+                    <div className="absolute right-0 top-12 w-96 max-h-[480px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">🔔 Smart Alerts</h3>
+                        <button onClick={() => setShowAlertsPanel(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer text-lg leading-none">×</button>
+                      </div>
+                      <div className="space-y-2">
+                        {alertsData.alerts.map((alert: any, i: number) => (
+                          <div key={i} className={`p-3 rounded-xl text-xs font-medium border ${
+                            alert.type === "critical" ? "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300" :
+                            alert.type === "warning" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300" :
+                            "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                          }`}>
+                            <p className="font-bold mb-0.5">{alert.icon} {alert.title}</p>
+                            <p className="opacity-80">{alert.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 rounded-xl px-3 py-1.5 flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
                   <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 max-w-[150px] truncate" title={userEmail}>
@@ -1049,6 +1240,36 @@ function Dashboard() {
             >
               👥 Shared Bills ({splits.filter(s => !s.is_settled).length})
             </button>
+            <button
+              onClick={() => setActiveTab("tax")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "tax"
+                  ? "border-amber-500 text-amber-600 dark:text-amber-400 dark:border-amber-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              💸 Tax Estimator
+            </button>
+            <button
+              onClick={() => setActiveTab("planner")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "planner"
+                  ? "border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              📋 Budget Planner
+            </button>
+            <button
+              onClick={() => setActiveTab("achievements")}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === "achievements"
+                  ? "border-yellow-500 text-yellow-600 dark:text-yellow-400 dark:border-yellow-400"
+                  : "border-transparent text-slate-455 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350"
+              }`}
+            >
+              🏆 Achievements {gamificationData ? `(${gamificationData.earned_badge_count}/${gamificationData.total_badge_count})` : ""}
+            </button>
             <div className="ml-auto pb-3 flex items-center">
               <button
                 onClick={handleCSVExport}
@@ -1068,7 +1289,7 @@ function Dashboard() {
         {activeTab === "overview" && (
           <>
             {/* Summary Statistics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           
           {/* Income Card */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm p-6 hover:shadow-md hover:scale-[1.01] transition-all">
@@ -1140,6 +1361,24 @@ function Dashboard() {
             </p>
             <div className="flex items-center gap-1.5 mt-2">
               <span className="text-violet-500 dark:text-violet-400 text-xs font-bold">Processed records</span>
+            </div>
+          </div>
+
+          {/* Net Worth Card */}
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl border border-transparent shadow-sm p-6 hover:shadow-md hover:scale-[1.01] transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-semibold uppercase tracking-wider opacity-85">Net Worth</span>
+              <div className="bg-white/20 text-white p-2.5 rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.33l-7.5-5-7.5 5V21" />
+                </svg>
+              </div>
+            </div>
+            <p className="text-3xl font-extrabold">
+              ₹{netWorth?.net_worth?.toLocaleString("en-IN") || 0}
+            </p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="text-[10px] font-bold opacity-90">Assets: ₹{netWorth?.total_assets?.toLocaleString("en-IN") || 0}</span>
             </div>
           </div>
 
@@ -1477,6 +1716,172 @@ function Dashboard() {
 
         </div>
 
+        {/* Daily Spending Heatmap & Payment Reminders */}
+        {userEmail && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            
+            {/* 90-Day Spending Heatmap (2 Columns) */}
+            <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm p-6 transition-colors">
+              {heatmapData && heatmapData.days ? (
+                <>
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 p-2 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 font-sans">90-Day Spending Heatmap</h2>
+                        <p className="text-xs text-slate-450 dark:text-slate-550">Track daily spending intensity (last 3 months)</p>
+                      </div>
+                    </div>
+                    <div className="text-right text-xs">
+                      <p className="font-bold text-slate-700 dark:text-slate-350">Avg. Daily Spend: ₹{heatmapData.avg_daily_spend?.toLocaleString("en-IN")}</p>
+                      <p className="text-slate-450 dark:text-slate-550">Total: ₹{heatmapData.total_spend_90d?.toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Heatmap Grid */}
+                  <div className="flex flex-col items-center sm:items-start overflow-x-auto pb-2">
+                    <div className="flex gap-1">
+                      {Array.from({ length: 13 }).map((_, weekIdx) => {
+                        const weekDays = heatmapData.days.filter((d: any) => d.week === weekIdx);
+                        return (
+                          <div key={weekIdx} className="flex flex-col gap-1">
+                            {weekIdx === 0 && weekDays.length > 0 && Array.from({ length: weekDays[0].day_of_week }).map((_, padIdx) => (
+                              <div key={`pad-${padIdx}`} className="w-3.5 h-3.5 rounded bg-transparent"></div>
+                            ))}
+                            {weekDays.map((day: any) => {
+                              const levelColors = [
+                                "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700",
+                                "bg-emerald-100 dark:bg-emerald-950/60",
+                                "bg-emerald-300 dark:bg-emerald-900/80",
+                                "bg-emerald-500 dark:bg-emerald-700",
+                                "bg-emerald-700 dark:bg-emerald-500"
+                              ];
+                              return (
+                                <div
+                                  key={day.date}
+                                  className={`w-3.5 h-3.5 rounded transition-all cursor-pointer ${levelColors[day.level]}`}
+                                  title={`${day.date}: ₹${day.amount?.toLocaleString("en-IN")} spent`}
+                                ></div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between w-full mt-4 text-[10px] text-slate-450 dark:text-slate-500 font-bold px-1">
+                      <span>90 days ago</span>
+                      <div className="flex items-center gap-1">
+                        <span>Less</span>
+                        <div className="w-2.5 h-2.5 rounded bg-slate-100 dark:bg-slate-800"></div>
+                        <div className="w-2.5 h-2.5 rounded bg-emerald-100 dark:bg-emerald-950/60"></div>
+                        <div className="w-2.5 h-2.5 rounded bg-emerald-300 dark:bg-emerald-900/80"></div>
+                        <div className="w-2.5 h-2.5 rounded bg-emerald-500 dark:bg-emerald-750"></div>
+                        <div className="w-2.5 h-2.5 rounded bg-emerald-700 dark:bg-emerald-500"></div>
+                        <span>More</span>
+                      </div>
+                      <span>Today</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Loading Heatmap...</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bill Reminders (1 Column) */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm p-6 flex flex-col justify-between transition-colors">
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-2.5">
+                    <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-450 p-2 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                    </div>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Bill Reminders</h2>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setReminderName("");
+                      setReminderAmount("");
+                      setReminderDueDate(new Date().toISOString().split("T")[0]);
+                      setReminderCategory("Others");
+                      setShowReminderModal(true);
+                    }}
+                    className="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-650 dark:text-indigo-400 text-xs font-bold py-1.5 px-3 rounded-lg transition-all cursor-pointer"
+                  >
+                    + Add
+                  </button>
+                </div>
+                
+                {reminders && reminders.length > 0 ? (
+                  <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+                    {reminders.map((r: any) => {
+                      const urgencyColors: Record<string, string> = {
+                        overdue: "bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900 text-rose-700 dark:text-rose-450",
+                        urgent: "bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900 text-amber-700 dark:text-amber-400",
+                        soon: "bg-indigo-50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900 text-indigo-700 dark:text-indigo-400",
+                        ok: "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 text-slate-655 dark:text-slate-350"
+                      };
+                      const color = urgencyColors[r.urgency] || urgencyColors.ok;
+                      
+                      return (
+                        <div key={r.id} className={`p-3 rounded-xl border flex justify-between items-center text-xs font-medium ${color}`}>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold truncate">{r.name}</p>
+                            <p className="opacity-85 font-semibold">₹{r.amount?.toLocaleString("en-IN")} • {r.due_date}</p>
+                            <p className="text-[10px] font-bold mt-0.5">
+                              {r.is_paid ? (
+                                <span className="text-emerald-600 dark:text-emerald-450">✅ Paid</span>
+                              ) : r.days_left < 0 ? (
+                                <span className="text-rose-600 dark:text-rose-450">⚠️ Overdue by {Math.abs(r.days_left)} days</span>
+                              ) : r.days_left === 0 ? (
+                                <span className="text-rose-500 font-extrabold animate-pulse">🔥 Due TODAY</span>
+                              ) : (
+                                <span>⏳ {r.days_left} days remaining</span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex gap-1.5 ml-2">
+                            {!r.is_paid && (
+                              <button
+                                onClick={() => handleReminderPay(r.id)}
+                                className="bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 px-2 py-1 rounded-lg border border-current font-black text-[9px] cursor-pointer"
+                                title="Mark Paid"
+                              >
+                                Pay
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleReminderDelete(r.id)}
+                              className="hover:text-rose-600 cursor-pointer p-1 text-slate-400 font-bold"
+                              title="Delete"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-slate-50/50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">No bill reminders set.</p>
+                    <p className="text-[10px] text-slate-450 dark:text-slate-500 mt-0.5">Click Add to get started.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+
         {/* Transactions Table Section */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm p-6 transition-colors">
           <div className="flex justify-between items-center mb-6">
@@ -1530,25 +1935,51 @@ function Dashboard() {
             </div>
             
             {userEmail && (
-              <button
-                onClick={() => {
-                  setTxModalMode("add");
-                  setTxDescription("");
-                  setTxAmount("");
-                  setTxCategory("Shopping");
-                  setTxType("expense");
-                  setTxDate(new Date().toISOString().split("T")[0]);
-                  setShowTxModal(true);
-                }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer w-full sm:w-auto justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Add Transaction
-              </button>
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-center sm:justify-end">
+                <button
+                  onClick={handleAutoCategorize}
+                  disabled={isAutoCatting}
+                  className="bg-violet-650 hover:bg-violet-700 disabled:bg-violet-400 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer justify-center"
+                >
+                  {isAutoCatting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Categorizing...
+                    </>
+                  ) : (
+                    <>
+                      <span>✨ Auto-Categorize</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setTxModalMode("add");
+                    setTxDescription("");
+                    setTxAmount("");
+                    setTxCategory("Shopping");
+                    setTxType("expense");
+                    setTxDate(new Date().toISOString().split("T")[0]);
+                    setShowTxModal(true);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add Transaction
+                </button>
+              </div>
             )}
           </div>
+
+          {/* Auto-Categorize Result Banner */}
+          {autoCatResult && (
+            <div className="mb-6 bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/60 rounded-xl p-3 flex justify-between items-center text-xs text-violet-850 dark:text-violet-300">
+              <span className="font-semibold">✨ {autoCatResult.message}</span>
+              <button onClick={() => setAutoCatResult(null)} className="font-bold text-violet-600 dark:text-violet-450 hover:underline cursor-pointer">Dismiss</button>
+            </div>
+          )}
 
           {/* Table */}
           <div className="overflow-x-auto">
@@ -2472,6 +2903,266 @@ function Dashboard() {
               </form>
             </div>
           )}
+        </div>
+      )}
+
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* TAX ESTIMATOR TAB */}
+      {/* ═══════════════════════════════════════════ */}
+      {activeTab === "tax" && (
+        <div className="space-y-6 mb-8">
+          {taxData ? (
+            <>
+              {/* Hero Tax Card */}
+              <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-2xl p-6 text-white shadow-lg shadow-orange-200 dark:shadow-none relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10"><div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white transform translate-x-16 -translate-y-16"></div></div>
+                <div className="relative flex flex-col md:flex-row items-center gap-8">
+                  <div className="text-center flex-shrink-0">
+                    <p className="text-[11px] font-bold opacity-70 uppercase tracking-widest mb-1">Estimated Tax Liability</p>
+                    <p className="text-5xl font-black">₹{taxData.total_tax_liability?.toLocaleString("en-IN")}</p>
+                    <p className="text-sm font-bold mt-1 opacity-80">Effective Rate: {taxData.effective_tax_rate}%</p>
+                  </div>
+                  <div className="flex-1 grid grid-cols-2 gap-3">
+                    <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4">
+                      <p className="text-xs opacity-70 font-bold mb-1">Gross Income</p>
+                      <p className="text-xl font-black">₹{taxData.gross_income?.toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4">
+                      <p className="text-xs opacity-70 font-bold mb-1">Standard Deduction</p>
+                      <p className="text-xl font-black">₹{taxData.standard_deduction?.toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4">
+                      <p className="text-xs opacity-70 font-bold mb-1">Net Taxable Income</p>
+                      <p className="text-xl font-black">₹{taxData.net_taxable_income?.toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4">
+                      <p className="text-xs opacity-70 font-bold mb-1">Rebate 87A</p>
+                      <p className="text-xl font-black text-emerald-200">₹{taxData.rebate_87A?.toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="relative text-xs opacity-70 mt-4 font-medium">{taxData.regime}</p>
+              </div>
+
+              {/* Slab Breakdown */}
+              {taxData.slab_breakdown && taxData.slab_breakdown.length > 0 && (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">📊 Tax Slab Breakdown</h2>
+                  <div className="space-y-3">
+                    {taxData.slab_breakdown.map((slab: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                        <div>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{slab.slab}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Income in slab: ₹{slab.income_in_slab?.toLocaleString("en-IN")}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-amber-600 dark:text-amber-400">{slab.rate}</p>
+                          <p className="text-sm font-black text-slate-800 dark:text-slate-100">₹{slab.tax?.toLocaleString("en-IN")}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-100 dark:border-amber-900">
+                      <p className="text-sm font-black text-amber-800 dark:text-amber-300">4% Health & Education Cess</p>
+                      <p className="text-sm font-black text-amber-800 dark:text-amber-300">₹{taxData.cess_4pct?.toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tips */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">💡 Tax Saving Tips</h2>
+                <div className="space-y-3">
+                  {taxData.tips?.map((tip: string, i: number) => (
+                    <div key={i} className="flex gap-3 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900">
+                      <span className="text-blue-500 text-lg">💡</span>
+                      <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">{tip}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-20 text-slate-400">
+              <p className="text-4xl mb-3">💸</p>
+              <p className="font-bold text-slate-600 dark:text-slate-400">No income data found</p>
+              <p className="text-sm mt-1">Upload statements or add income transactions to estimate your tax.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* BUDGET PLANNER TAB */}
+      {/* ═══════════════════════════════════════════ */}
+      {activeTab === "planner" && (
+        <div className="space-y-6 mb-8">
+          {budgetPlan ? (
+            <>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100">📋 Smart Budget Planner</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Based on {budgetPlan.last_month} actuals • Projected savings: <span className={`font-bold ${budgetPlan.projected_savings >= 0 ? "text-emerald-600" : "text-rose-600"}`}>₹{budgetPlan.projected_savings?.toLocaleString("en-IN")}</span></p>
+                </div>
+                <button
+                  onClick={handleApplyBudgetPlan}
+                  disabled={applyingPlan}
+                  className="bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 text-white font-bold py-2.5 px-5 rounded-xl shadow-md shadow-violet-200 dark:shadow-none transition-all cursor-pointer flex items-center gap-2 text-sm"
+                >
+                  {applyingPlan ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : "✅"}
+                  {applyingPlan ? "Applying..." : "Apply Plan"}
+                </button>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
+                        <th className="text-left px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Category</th>
+                        <th className="text-right px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Last Month Actual</th>
+                        <th className="text-right px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Current Budget</th>
+                        <th className="text-right px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Suggested Budget</th>
+                        <th className="text-left px-5 py-4 text-xs font-black text-slate-500 uppercase tracking-wider">Advice</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {budgetPlan.plan?.map((item: any, i: number) => (
+                        <tr key={i} className="border-b border-slate-50 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-5 py-4 font-bold text-slate-800 dark:text-slate-200">{item.category}</td>
+                          <td className="px-5 py-4 text-right text-slate-600 dark:text-slate-400">₹{item.last_month_actual?.toLocaleString("en-IN")}</td>
+                          <td className="px-5 py-4 text-right text-slate-600 dark:text-slate-400">{item.current_budget > 0 ? `₹${item.current_budget?.toLocaleString("en-IN")}` : "—"}</td>
+                          <td className="px-5 py-4 text-right font-bold text-violet-600 dark:text-violet-400">₹{item.suggested_budget?.toLocaleString("en-IN")}</td>
+                          <td className="px-5 py-4">
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                              item.status === "overspent" ? "bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400" :
+                              item.status === "unbudgeted" ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" :
+                              "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                            }`}>{item.advice}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-20 text-slate-400">
+              <p className="text-4xl mb-3">📋</p>
+              <p className="font-bold text-slate-600 dark:text-slate-400">No plan data yet</p>
+              <p className="text-sm mt-1">Add transactions and budgets to generate your personalized monthly plan.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* ACHIEVEMENTS / GAMIFICATION TAB */}
+      {/* ═══════════════════════════════════════════ */}
+      {activeTab === "achievements" && (
+        <div className="space-y-6 mb-8">
+          {gamificationData ? (
+            <>
+              {/* Level & XP Hero */}
+              <div className="bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg shadow-amber-200 dark:shadow-none relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10"><div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-white transform translate-x-20 -translate-y-20"></div></div>
+                <div className="relative flex flex-col md:flex-row items-center gap-8">
+                  <div className="text-center flex-shrink-0">
+                    <p className="text-6xl mb-1">🏆</p>
+                    <p className="text-xl font-black">{gamificationData.level}</p>
+                    <p className="text-xs opacity-70 font-bold mt-1">{gamificationData.total_xp} XP Total</p>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between text-xs font-bold mb-2">
+                      <span>Progress to Next Level</span>
+                      <span>{gamificationData.xp_progress} / {gamificationData.xp_needed} XP</span>
+                    </div>
+                    <div className="bg-white/20 rounded-full h-4 overflow-hidden">
+                      <div className="bg-white h-full rounded-full transition-all duration-700" style={{width: `${gamificationData.progress_pct}%`}}></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-4">
+                      <div className="bg-white/15 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-black">🔥</p>
+                        <p className="text-xs font-bold mt-1">{gamificationData.streak_days} Day Streak</p>
+                      </div>
+                      <div className="bg-white/15 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-black">{gamificationData.earned_badge_count}</p>
+                        <p className="text-xs font-bold mt-1">Badges Earned</p>
+                      </div>
+                      <div className="bg-white/15 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-black">{gamificationData.stats?.savings_rate_pct}%</p>
+                        <p className="text-xs font-bold mt-1">Savings Rate</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Badges Grid */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">🎖️ Badge Collection</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {gamificationData.badges?.map((badge: any) => (
+                    <div key={badge.id} className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                      badge.earned
+                        ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                        : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 opacity-50 grayscale"
+                    }`}>
+                      <span className="text-2xl">{badge.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold truncate ${badge.earned ? "text-amber-800 dark:text-amber-300" : "text-slate-500"}`}>{badge.name}</p>
+                        <p className="text-xs text-slate-400 truncate">{badge.description}</p>
+                        <p className="text-xs font-bold text-amber-500 mt-0.5">+{badge.xp} XP</p>
+                      </div>
+                      {badge.earned && <span className="text-emerald-500 flex-shrink-0">✅</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-20"><p className="text-4xl mb-3">🏆</p><p className="font-bold text-slate-600 dark:text-slate-400">Start tracking to earn badges!</p></div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* NET WORTH + HEATMAP + REMINDERS inside Overview */}
+      {/* These are rendered at the bottom of the Overview tab */}
+      {/* ═══════════════════════════════════════════ */}
+
+      {/* Payment Reminder Modal */}
+      {showReminderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 max-w-md w-full p-8 relative">
+            <button onClick={() => setShowReminderModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-5">⏰ Add Payment Reminder</h3>
+            <form onSubmit={handleReminderSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Name</label>
+                <input type="text" required value={reminderName} onChange={(e) => setReminderName(e.target.value)} placeholder="e.g. Credit Card Bill" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Amount (₹)</label>
+                  <input type="number" step="0.01" required value={reminderAmount} onChange={(e) => setReminderAmount(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Due Date</label>
+                  <input type="date" required value={reminderDueDate} onChange={(e) => setReminderDueDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
+                <select value={reminderCategory} onChange={(e) => setReminderCategory(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100">
+                  {["EMI", "Credit Card", "Rent", "Utilities", "Subscription", "Insurance", "Others"].map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all text-sm cursor-pointer">Add Reminder</button>
+            </form>
+          </div>
         </div>
       )}
 

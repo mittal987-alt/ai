@@ -107,4 +107,108 @@ class SharedExpenseResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PaymentReminderCreate(BaseModel):
+    name: str
+    amount: float
+    due_date: date
+    category: str = "Others"
+
+class PaymentReminderResponse(BaseModel):
+    id: int
+    name: str
+    amount: float
+    due_date: date
+    category: str
+    is_paid: bool
+    days_left: Optional[int] = None
+    urgency: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Recurring Transactions ───────────────────────────────────────────────────
+
+class RecurringTransactionCreate(BaseModel):
+    description: str
+    amount: float
+    category: str
+    transaction_type: str   # income / expense
+    frequency: str          # daily / weekly / monthly / yearly
+    next_date: date
+    is_active: bool = True
+
+class RecurringTransactionResponse(BaseModel):
+    id: int
+    description: str
+    amount: float
+    category: str
+    transaction_type: str
+    frequency: str
+    next_date: date
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Investment Portfolio ─────────────────────────────────────────────────────
+
+class InvestmentCreate(BaseModel):
+    name: str
+    investment_type: str    # Stocks, Mutual Fund, FD, PPF, Gold, Crypto, Others
+    invested_amount: float
+    current_value: float
+    units: Optional[float] = None
+    purchase_price: Optional[float] = None
+    current_price: Optional[float] = None
+    purchase_date: date
+    notes: Optional[str] = None
+
+class InvestmentResponse(BaseModel):
+    id: int
+    name: str
+    investment_type: str
+    invested_amount: float
+    current_value: float
+    units: Optional[float] = None
+    purchase_price: Optional[float] = None
+    current_price: Optional[float] = None
+    purchase_date: date
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Loan / EMI Tracker ───────────────────────────────────────────────────────
+
+class LoanCreate(BaseModel):
+    name: str
+    loan_type: str          # Home, Car, Personal, Education, Business, Others
+    principal_amount: float
+    interest_rate: float    # Annual % rate
+    tenure_months: int
+    start_date: date
+    emi_amount: float
+    outstanding_amount: float
+    lender_name: Optional[str] = None
+    is_active: bool = True
+
+class LoanResponse(BaseModel):
+    id: int
+    name: str
+    loan_type: str
+    principal_amount: float
+    interest_rate: float
+    tenure_months: int
+    start_date: date
+    emi_amount: float
+    outstanding_amount: float
+    lender_name: Optional[str] = None
+    is_active: bool
+
+    class Config:
+        from_attributes = True
 
