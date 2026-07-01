@@ -3,6 +3,7 @@ import { FinanceProvider } from "./context/FinanceContext";
 import Layout from "./components/Layout";
 
 import Overview from "./pages/Overview";
+import Notifications from "./pages/Notifications";
 import Goals from "./pages/Goals";
 import Subscriptions from "./pages/Subscriptions";
 import Accounts from "./pages/Accounts";
@@ -21,6 +22,7 @@ function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/"              element={<Overview />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/goals"         element={<Goals />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/accounts"      element={<Accounts />} />

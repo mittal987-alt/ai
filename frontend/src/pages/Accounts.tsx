@@ -13,52 +13,58 @@ const Accounts: React.FC = () => {
     handleAccountDelete,
   } = useFinance();
 
+  const openAddModal = () => {
+    setAccountModalMode("add");
+    setAccountName("");
+    setAccountType("Bank");
+    setAccountBalance("0");
+    setShowAccountModal(true);
+  };
+
+  // Left-border accent per account type, using the ledger palette
+  const typeAccent: Record<string, string> = {
+    Bank: "border-l-blue-500",
+    "Credit Card": "border-l-coral-500",
+    Cash: "border-l-teal-500",
+    "UPI Wallet": "border-l-amber-500"
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-wrap justify-between items-center gap-4 bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-800 p-6 rounded-xl shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100">💳 Wallets & Accounts</h2>
-          <p className="text-xs text-slate-455 dark:text-slate-500 font-medium mt-1">Manage your bank accounts, cards, and wallets.</p>
+          <h2 className="text-xl font-serif font-bold text-stone-850 dark:text-stone-100">Wallets & accounts</h2>
+          <p className="text-xs text-stone-450 dark:text-stone-500 font-medium mt-1">Manage your bank accounts, cards, and wallets.</p>
         </div>
         <button
-          onClick={() => {
-            setAccountModalMode("add");
-            setAccountName("");
-            setAccountType("Bank");
-            setAccountBalance("0");
-            setShowAccountModal(true);
-          }}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer border-none"
+          onClick={openAddModal}
+          className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer border-none"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Add Account
+          Add account
         </button>
       </div>
 
       {accounts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {accounts.map((a: any) => {
-            const typeColors: Record<string, string> = {
-              Bank: "from-indigo-500 to-blue-600",
-              "Credit Card": "from-rose-500 to-pink-600",
-              Cash: "from-emerald-500 to-teal-600",
-              "UPI Wallet": "from-amber-500 to-orange-600"
-            };
-            const gradient = typeColors[a.account_type] || "from-slate-500 to-slate-700";
+            const accent = typeAccent[a.account_type] || "border-l-stone-400";
             return (
-              <div key={a.id} className={`bg-gradient-to-br ${gradient} rounded-2xl p-6 text-white shadow-lg hover:scale-[1.02] transition-all relative overflow-hidden group`}>
-                <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 transform translate-x-10 -translate-y-10"></div>
-                <div className="flex justify-between items-start mb-8">
+              <div
+                key={a.id}
+                className={`bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-800 border-l-4 ${accent} rounded-xl p-5 shadow-sm hover:shadow-md transition-all group`}
+              >
+                <div className="flex justify-between items-start mb-7">
                   <div>
-                    <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{a.account_type}</p>
-                    <h3 className="text-lg font-black mt-1">{a.name}</h3>
+                    <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">{a.account_type}</p>
+                    <h3 className="text-base font-bold text-stone-800 dark:text-stone-100 mt-1">{a.name}</h3>
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => openEditAccountModal(a)}
-                      className="text-white/70 hover:text-white cursor-pointer bg-transparent border-none"
+                      className="text-stone-400 hover:text-teal-700 dark:hover:text-teal-400 cursor-pointer bg-transparent border-none"
                       title="Edit"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
@@ -67,7 +73,7 @@ const Accounts: React.FC = () => {
                     </button>
                     <button
                       onClick={() => handleAccountDelete(a.id)}
-                      className="text-white/70 hover:text-white cursor-pointer bg-transparent border-none"
+                      className="text-stone-400 hover:text-coral-600 cursor-pointer bg-transparent border-none"
                       title="Delete"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
@@ -77,29 +83,22 @@ const Accounts: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider mb-1">Balance</p>
-                  <p className="text-3xl font-black">₹{a.balance?.toLocaleString("en-IN") || 0}</p>
+                  <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Balance</p>
+                  <p className="text-2xl font-mono font-bold text-stone-850 dark:text-stone-100">₹{a.balance?.toLocaleString("en-IN") || 0}</p>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-          <div className="text-4xl mb-4">💳</div>
-          <h3 className="text-base font-bold text-slate-700 dark:text-slate-350">No Accounts Added Yet</h3>
-          <p className="text-xs text-slate-455 dark:text-slate-500 mt-1 mb-6 text-center max-w-sm">Add bank accounts, credit cards or wallets to track balances in one place.</p>
+        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-stone-900 rounded-xl border border-dashed border-stone-200 dark:border-stone-800">
+          <h3 className="text-base font-serif font-bold text-stone-700 dark:text-stone-350">No accounts added yet</h3>
+          <p className="text-xs text-stone-450 dark:text-stone-500 mt-1 mb-6 text-center max-w-sm">Add bank accounts, credit cards, or wallets to track balances in one place.</p>
           <button
-            onClick={() => {
-              setAccountModalMode("add");
-              setAccountName("");
-              setAccountType("Bank");
-              setAccountBalance("0");
-              setShowAccountModal(true);
-            }}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-6 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer border-none"
+            onClick={openAddModal}
+            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold py-2.5 px-6 rounded-lg transition-all cursor-pointer border-none"
           >
-            Add First Account
+            Add first account
           </button>
         </div>
       )}

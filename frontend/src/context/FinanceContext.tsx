@@ -29,6 +29,12 @@ interface FinanceContextType {
   setIsUploading: React.Dispatch<React.SetStateAction<boolean>>;
   isLoadingAuth: boolean;
   setIsLoadingAuth: React.Dispatch<React.SetStateAction<boolean>>;
+  pdfPassword: string;
+  setPdfPassword: React.Dispatch<React.SetStateAction<string>>;
+  pdfPasswordMessage: string;
+  setPdfPasswordMessage: React.Dispatch<React.SetStateAction<string>>;
+  showPdfPasswordPrompt: boolean;
+  setShowPdfPasswordPrompt: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Budgets
   budgets: any[];
@@ -224,6 +230,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [authError, setAuthError] = useState<string>("");
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(false);
+  const [pdfPassword, setPdfPassword] = useState<string>("");
+  const [pdfPasswordMessage, setPdfPasswordMessage] = useState<string>("");
+  const [showPdfPasswordPrompt, setShowPdfPasswordPrompt] = useState<boolean>(false);
 
   // Budgets state
   const [budgets, setBudgets] = useState<any[]>([]);
@@ -541,7 +550,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const uploadStatement = async () => {
+  const uploadStatement = async (enforcedPassword?: string) => {
     if (!file) {
       alert("Please select a PDF file");
       return;
@@ -557,6 +566,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const formData = new FormData();
     formData.append("file", file);
+    const passwordToSubmit = enforcedPassword || pdfPassword;
+    if (passwordToSubmit) {
+      formData.append("password", passwordToSubmit);
+    }
     setIsUploading(true);
 
     try {
@@ -577,11 +590,29 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (result.success) {
         alert(`Statement uploaded successfully! Saved ${result.transactions_saved} transactions.`);
         setFile(null);
+        setPdfPassword("");
+        setShowPdfPasswordPrompt(false);
+        setPdfPasswordMessage("");
         const fileInput = document.getElementById("file-upload-input") as HTMLInputElement;
         if (fileInput) fileInput.value = "";
         loadData();
       } else {
-        alert(result.message || "Statement parsing/upload failed.");
+        const needsPassword =
+          result.requires_password === true ||
+          result.requires_password === "true" ||
+          result.password_required === true ||
+          (typeof result.message === "string" && result.message.toLowerCase().includes("password")) ||
+          (typeof result.detail === "string" && result.detail.toLowerCase().includes("password"));
+
+        if (needsPassword) {
+          setPdfPasswordMessage(result.message || result.detail || "This PDF is password protected. Enter the file password:");
+          setShowPdfPasswordPrompt(true);
+          return;
+        }
+
+        setShowPdfPasswordPrompt(false);
+        setPdfPasswordMessage("");
+        alert(result.message || result.detail || "Statement parsing/upload failed.");
       }
     } catch (error) {
       console.error(error);
@@ -1294,6 +1325,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSubName,
         subAmount,
         setSubAmount,
+        pdfPassword,
+        setPdfPassword,
+        pdfPasswordMessage,
+        setPdfPasswordMessage,
+        showPdfPasswordPrompt,
+        setShowPdfPasswordPrompt,
         subCategory,
         setSubCategory,
         subBillingCycle,

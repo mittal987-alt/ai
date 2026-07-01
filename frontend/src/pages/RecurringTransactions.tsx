@@ -81,106 +81,104 @@ const RecurringTransactions: React.FC = () => {
     try {
       const res = await fetch(`${API}/recurring/trigger`, { method: "POST", headers: { Authorization: `Bearer ${token()}` } });
       const data = await res.json();
-      alert(`✅ ${data.message}`);
+      alert(data.message);
       load();
     } catch (e) { console.error(e); }
     setTriggering(false);
   };
 
   const typeColors: Record<string, string> = {
-    income: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900",
-    expense: "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900",
+    income: "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 border-teal-200 dark:border-teal-900",
+    expense: "bg-coral-50 dark:bg-coral-950/30 text-coral-700 dark:text-coral-400 border-coral-200 dark:border-coral-900",
   };
   const freqColors: Record<string, string> = {
-    daily: "bg-violet-50 dark:bg-violet-950/30 text-violet-700",
-    weekly: "bg-blue-50 dark:bg-blue-950/30 text-blue-700",
-    monthly: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700",
-    yearly: "bg-amber-50 dark:bg-amber-950/30 text-amber-700",
+    daily: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 border-violet-200 dark:border-violet-900",
+    weekly: "bg-blue-50 dark:bg-blue-950/30 text-blue-700 border-blue-200 dark:border-blue-900",
+    monthly: "bg-teal-50 dark:bg-teal-950/30 text-teal-700 border-teal-200 dark:border-teal-900",
+    yearly: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 border-amber-200 dark:border-amber-900",
   };
 
   if (!userEmail) return (
-    <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-      <p className="text-4xl mb-4">🔄</p>
-      <p className="font-bold text-slate-700 dark:text-slate-300 mb-2">Sign in to manage recurring transactions</p>
-      <button onClick={() => { setAuthMode("login"); setShowAuthModal(true); }} className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2.5 px-6 rounded-xl border-none cursor-pointer">Sign In</button>
+    <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-stone-900 rounded-xl border border-stone-150 dark:border-stone-800">
+      <p className="font-serif font-bold text-stone-700 dark:text-stone-300 mb-2">Sign in to manage recurring transactions</p>
+      <button onClick={() => { setAuthMode("login"); setShowAuthModal(true); }} className="mt-2 bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-6 rounded-lg border-none cursor-pointer">Sign in</button>
     </div>
   );
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-wrap justify-between items-center gap-4 bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-800 p-6 rounded-xl shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100">🔄 Recurring Transactions</h2>
-          <p className="text-xs text-slate-455 dark:text-slate-500 font-medium mt-1">Auto-schedule income and expenses on a fixed cadence.</p>
+          <h2 className="text-xl font-serif font-bold text-stone-850 dark:text-stone-100">Recurring transactions</h2>
+          <p className="text-xs text-stone-450 dark:text-stone-500 font-medium mt-1">Auto-schedule income and expenses on a fixed cadence.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             onClick={handleTrigger}
             disabled={triggering}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs font-bold py-2.5 px-4 rounded-xl border-none cursor-pointer flex items-center gap-1.5 transition-all"
+            className="bg-stone-800 dark:bg-stone-700 hover:bg-stone-900 disabled:bg-stone-400 text-white text-xs font-bold py-2.5 px-4 rounded-lg border-none cursor-pointer flex items-center gap-1.5 transition-all"
           >
-            {triggering ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "⚡"}
-            {triggering ? "Running..." : "Run Due Now"}
+            {triggering && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+            {triggering ? "Running…" : "Run due now"}
           </button>
           <button
             onClick={openCreate}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl border-none cursor-pointer flex items-center gap-1.5 transition-all"
+            className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg border-none cursor-pointer flex items-center gap-1.5 transition-all"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            Add Schedule
+            Add schedule
           </button>
         </div>
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="text-center py-16 text-slate-400">Loading…</div>
+        <div className="text-center py-16 text-stone-400 font-serif">Loading…</div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-          <p className="text-4xl mb-4">🔄</p>
-          <h3 className="font-bold text-slate-700 dark:text-slate-300">No recurring schedules yet</h3>
-          <p className="text-xs text-slate-500 mt-1 mb-6">Set up salary auto-log, rent, subscriptions, and more.</p>
-          <button onClick={openCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-6 rounded-xl border-none cursor-pointer">Add First Schedule</button>
+        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-stone-900 rounded-xl border border-dashed border-stone-200 dark:border-stone-800">
+          <h3 className="font-serif font-bold text-stone-700 dark:text-stone-300">No recurring schedules yet</h3>
+          <p className="text-xs text-stone-450 mt-1 mb-6">Set up salary auto-log, rent, subscriptions, and more.</p>
+          <button onClick={openCreate} className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold py-2.5 px-6 rounded-lg border-none cursor-pointer">Add first schedule</button>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-800 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-455 dark:text-slate-550 text-xs font-bold uppercase tracking-wider">
+                <tr className="border-b border-stone-150 dark:border-stone-800 text-stone-450 dark:text-stone-550 text-[11px] font-bold uppercase tracking-wider">
                   <th className="py-4 pl-6">Description</th>
                   <th className="py-4">Frequency</th>
                   <th className="py-4">Category</th>
                   <th className="py-4">Type</th>
-                  <th className="py-4">Next Date</th>
+                  <th className="py-4">Next date</th>
                   <th className="py-4 text-right pr-6">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-850">
+              <tbody className="divide-y divide-stone-50 dark:divide-stone-850">
                 {items.map((item) => (
-                  <tr key={item.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors group ${!item.is_active ? "opacity-50" : ""}`}>
+                  <tr key={item.id} className={`hover:bg-stone-50/60 dark:hover:bg-stone-850/20 transition-colors group ${!item.is_active ? "opacity-50" : ""}`}>
                     <td className="py-4 pl-6">
                       <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 rounded-full ${item.is_active ? "bg-emerald-500" : "bg-slate-300"}`}></div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{item.description}</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${item.is_active ? "bg-teal-600" : "bg-stone-300"}`}></div>
+                        <span className="font-bold text-stone-800 dark:text-stone-200 text-sm">{item.description}</span>
                       </div>
                     </td>
                     <td className="py-4">
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${freqColors[item.frequency] || ""}`}>{freq_label[item.frequency]}</span>
                     </td>
-                    <td className="py-4 text-xs text-slate-600 dark:text-slate-400">{item.category}</td>
+                    <td className="py-4 text-xs text-stone-600 dark:text-stone-400">{item.category}</td>
                     <td className="py-4">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeColors[item.transaction_type] || ""}`}>{item.transaction_type}</span>
                     </td>
-                    <td className="py-4 text-xs text-slate-600 dark:text-slate-400">{item.next_date}</td>
+                    <td className="py-4 text-xs font-mono text-stone-600 dark:text-stone-400">{item.next_date}</td>
                     <td className="py-4 pr-6 text-right">
-                      <span className={`font-extrabold text-sm ${item.transaction_type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                        {item.transaction_type === "income" ? "+" : "-"}₹{item.amount?.toLocaleString("en-IN")}
+                      <span className={`font-mono font-bold text-sm ${item.transaction_type === "income" ? "text-teal-700 dark:text-teal-400" : "text-coral-600 dark:text-coral-400"}`}>
+                        {item.transaction_type === "income" ? "+" : "−"}₹{item.amount?.toLocaleString("en-IN")}
                       </span>
                       <span className="inline-flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
-                        <button onClick={() => openEdit(item)} className="text-slate-400 hover:text-indigo-600 bg-transparent border-none cursor-pointer text-xs">✏️</button>
-                        <button onClick={() => handleDelete(item.id)} className="text-slate-400 hover:text-rose-600 bg-transparent border-none cursor-pointer text-xs">✕</button>
+                        <button onClick={() => openEdit(item)} className="text-stone-400 hover:text-teal-700 bg-transparent border-none cursor-pointer text-xs">✎</button>
+                        <button onClick={() => handleDelete(item.id)} className="text-stone-400 hover:text-coral-600 bg-transparent border-none cursor-pointer text-xs">✕</button>
                       </span>
                     </td>
                   </tr>
@@ -193,26 +191,26 @@ const RecurringTransactions: React.FC = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 max-w-md w-full p-8 relative">
-            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">{editId ? "Edit Schedule" : "New Recurring Schedule"}</h3>
-              <p className="text-xs text-slate-500 mt-1">Auto-generate transactions on a fixed cadence</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/55 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-150 dark:border-stone-800 max-w-md w-full p-7 relative">
+            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-stone-400 hover:text-stone-650 bg-transparent border-none cursor-pointer p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800">✕</button>
+            <div className="mb-6">
+              <h3 className="text-xl font-serif font-bold text-stone-850 dark:text-stone-100">{editId ? "Edit schedule" : "New recurring schedule"}</h3>
+              <p className="text-xs text-stone-550 dark:text-stone-450 mt-1">Auto-generate transactions on a fixed cadence</p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Description</label>
-                <input required value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Monthly Salary" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100" />
+                <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Description</label>
+                <input required value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Monthly salary" className="modal-input" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Amount (₹)</label>
-                  <input required type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100" />
+                  <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Amount (₹)</label>
+                  <input required type="number" value={amount} onChange={e => setAmount(e.target.value)} className="modal-input" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type</label>
-                  <select value={txType} onChange={e => setTxType(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100 cursor-pointer">
+                  <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Type</label>
+                  <select value={txType} onChange={e => setTxType(e.target.value)} className="modal-input cursor-pointer">
                     <option value="expense">Expense</option>
                     <option value="income">Income</option>
                   </select>
@@ -220,28 +218,28 @@ const RecurringTransactions: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
-                  <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100 cursor-pointer">
+                  <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Category</label>
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="modal-input cursor-pointer">
                     {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Frequency</label>
-                  <select value={frequency} onChange={e => setFrequency(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100 cursor-pointer">
+                  <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Frequency</label>
+                  <select value={frequency} onChange={e => setFrequency(e.target.value)} className="modal-input cursor-pointer">
                     {FREQUENCIES.map(f => <option key={f} value={f}>{freq_label[f]}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Next Trigger Date</label>
-                <input required type="date" value={nextDate} onChange={e => setNextDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100" />
+                <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Next trigger date</label>
+                <input required type="date" value={nextDate} onChange={e => setNextDate(e.target.value)} className="modal-input" />
               </div>
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="is-active" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="w-4 h-4 accent-indigo-600 cursor-pointer" />
-                <label htmlFor="is-active" className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer">Active (will trigger automatically)</label>
+                <input type="checkbox" id="is-active" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="w-4 h-4 accent-teal-700 cursor-pointer" />
+                <label htmlFor="is-active" className="text-sm text-stone-700 dark:text-stone-300 cursor-pointer">Active (will trigger automatically)</label>
               </div>
-              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-sm border-none cursor-pointer transition-all mt-2">
-                {editId ? "Save Changes" : "Create Schedule"}
+              <button type="submit" className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 rounded-lg text-sm border-none cursor-pointer transition-all mt-2">
+                {editId ? "Save changes" : "Create schedule"}
               </button>
             </form>
           </div>
