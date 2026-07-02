@@ -3,6 +3,8 @@ from pydantic import BaseModel, EmailStr
 from datetime import date
 from typing import Optional
 
+from datetime import datetime
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
@@ -113,6 +115,18 @@ class PaymentReminderCreate(BaseModel):
     amount: float
     due_date: date
     category: str = "Others"
+    is_recurring: Optional[bool] = False
+    recurrence_frequency: Optional[str] = None  # "daily" | "weekly" | "monthly" | "yearly"
+
+class PaymentReminderUpdate(BaseModel):
+    name: Optional[str] = None
+    amount: Optional[float] = None
+    due_date: Optional[date] = None
+    category: Optional[str] = None
+    is_paid: Optional[bool] = None
+    is_recurring: Optional[bool] = None
+    recurrence_frequency: Optional[str] = None
+
 
 class PaymentReminderResponse(BaseModel):
     id: int
@@ -211,4 +225,4 @@ class LoanResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
+

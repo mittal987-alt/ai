@@ -8,6 +8,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100))
+    
     email = Column(String(100), unique=True)
     password = Column(String(255))
     created_at = Column(DateTime(timezone=True),
@@ -116,6 +117,9 @@ class PaymentReminder(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     name = Column(String(100))
     amount = Column(Float)
+    is_recurring = Column(Boolean, default=False)
+    recurrence_frequency = Column(String, nullable=True)  # "daily" | "weekly" | "monthly" | "yearly"
+
     due_date = Column(Date)
     category = Column(String(100), default="Others")
     is_paid = Column(Boolean, default=False)
@@ -169,4 +173,4 @@ class Loan(Base):
     outstanding_amount = Column(Float)
     lender_name = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

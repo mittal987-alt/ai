@@ -224,6 +224,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Authentication UI Modal State
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [reminderIsRecurring, setReminderIsRecurring] = useState(false);
+  const [reminderFrequency, setReminderFrequency] = useState("monthly"); // "daily" | "weekly" | "monthly" | "yearly"
   const [authName, setAuthName] = useState<string>("");
   const [authEmail, setAuthEmail] = useState<string>("");
   const [authPassword, setAuthPassword] = useState<string>("");
@@ -392,6 +394,55 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } else {
         setTransactions([]);
       }
+      
+const handleReminderSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!reminderName || !reminderAmount || !reminderDueDate) return;
+  const token = localStorage.getItem("token");
+  try {
+    const res = await fetch("http://127.0.0.1:8000/reminders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+      body: JSON.stringify({
+        name: reminderName,
+        amount: parseFloat(reminderAmount),
+        due_date: reminderDueDate,
+        category: reminderCategory,
+        is_recurring: reminderIsRecurring,
+        recurrence_frequency: reminderIsRecurring ? reminderFrequency : null,
+      }),
+    });
+    if (res.ok) {
+      setShowReminderModal(false);
+      setReminderName(""); setReminderAmount(""); setReminderCategory("Others");
+      setReminderIsRecurring(false); setReminderFrequency("monthly");
+      loadData();
+    }
+  } catch (err) { console.error(err); }
+};
+
+// --- 3) New handler: snooze a reminder by N days ----------------------------
+const handleReminderSnooze = async (id: number, days: number) => {
+  const token = localStorage.getItem("token");
+  try {
+    await fetch(`http://127.0.0.1:8000/reminders/${id}/snooze/${days}`, {
+      method: "PUT",
+      headers: { Authorization: token ? `Bearer ${token}` : "" }
+    });
+    loadData();
+  } catch (err) { console.error(err); }
+};
+
+// --- 4) Export the new values in your context provider's value object -----
+// Find the big object passed to <FinanceContext.Provider value={{ ... }}>
+// and add these entries alongside the existing reminder* ones:
+//
+//   reminderIsRecurring, setReminderIsRecurring,
+//   reminderFrequency, setReminderFrequency,
+//   handleReminderSnooze,
+//
+// =============================================================================
+
 
       const insightsRes = await fetch("http://127.0.0.1:8000/insights", { headers });
       if (insightsRes.ok) {

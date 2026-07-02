@@ -80,6 +80,7 @@ const Layout: React.FC = () => {
     pdfPassword,
     setPdfPassword,
     pdfPasswordMessage,
+    showPdfPasswordPrompt,
     userEmail,
     showAlertsPanel,
     setShowAlertsPanel,
@@ -184,10 +185,16 @@ const Layout: React.FC = () => {
     setReminderDueDate,
     reminderCategory,
     setReminderCategory,
+    reminderIsRecurring,
+    setReminderIsRecurring,
+    reminderFrequency,
+    setReminderFrequency,
     handleReminderSubmit,
   } = useFinance();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useBillNotifications(reminders);
 
@@ -334,52 +341,68 @@ const Layout: React.FC = () => {
               </button>
 
               <div className="flex flex-wrap items-center gap-3 ml-auto">
-                {/* Upload statement */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 bg-white dark:bg-stone-900 p-1.5 rounded-lg border border-stone-200 dark:border-stone-800">
-                    <input
-                      id="file-upload-input"
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => { if (e.target.files?.[0]) setFile(e.target.files[0]); }}
-                      className="text-xs text-stone-600 dark:text-stone-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-stone-100 dark:file:bg-stone-800 file:text-teal-700 dark:file:text-teal-400 hover:file:bg-teal-50 cursor-pointer max-w-[160px]"
-                    />
-                    <button
-                      onClick={() => uploadStatement()}
-                      disabled={isUploading}
-                      className="bg-teal-700 hover:bg-teal-800 disabled:bg-teal-400 text-white text-xs font-bold py-1.5 px-3.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border-none"
-                    >
-                      {isUploading ? (
-                        <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Parsing…</>
-                      ) : (
-                        <>
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                          </svg>
-                          Upload statement
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                    <p className="mb-2 font-medium">{pdfPasswordMessage || "If your PDF is encrypted, enter the password here before uploading."}</p>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                      <input
-                        type="password"
-                        value={pdfPassword}
-                        onChange={(e) => setPdfPassword(e.target.value)}
-                        placeholder="PDF password"
-                        className="w-full max-w-xs rounded-md border border-amber-300 bg-white px-2 py-1.5 text-xs text-stone-700 outline-none dark:border-amber-700 dark:bg-stone-900 dark:text-stone-200"
-                      />
+                {/* Upload statement — compact button that opens a popover */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUploadPanel(v => !v)}
+                    className="relative flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs font-bold py-2.5 px-3.5 rounded-lg transition-all cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.25} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <span className="hidden sm:inline">Upload statement</span>
+                    {file && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-teal-600"></span>}
+                  </button>
+
+                  {showUploadPanel && (
+                    <div className="absolute right-0 top-12 w-80 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl shadow-xl z-50 p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <p className="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Upload bank statement</p>
+                        <button onClick={() => setShowUploadPanel(false)} className="text-stone-400 hover:text-stone-600 cursor-pointer text-lg leading-none bg-transparent border-none">×</button>
+                      </div>
+                      <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-950 p-1.5 rounded-lg border border-stone-200 dark:border-stone-800 mb-1">
+                        <input
+                          id="file-upload-input"
+                          type="file"
+                          accept=".pdf"
+                          onChange={(e) => { if (e.target.files?.[0]) setFile(e.target.files[0]); }}
+                          className="text-xs text-stone-600 dark:text-stone-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-white dark:file:bg-stone-800 file:text-teal-700 dark:file:text-teal-400 hover:file:bg-teal-50 cursor-pointer flex-1 min-w-0"
+                        />
+                      </div>
+                      {file && <p className="text-[11px] text-stone-450 dark:text-stone-500 mb-3 truncate">Selected: {file.name}</p>}
                       <button
                         onClick={() => uploadStatement()}
                         disabled={isUploading || !file}
-                        className="rounded-md bg-amber-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-amber-700 disabled:bg-amber-400 border-none"
+                        className="w-full bg-teal-700 hover:bg-teal-800 disabled:bg-stone-300 dark:disabled:bg-stone-800 text-white text-xs font-bold py-2.5 rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
                       >
-                        Apply password
+                        {isUploading ? (
+                          <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Parsing…</>
+                        ) : "Upload statement"}
                       </button>
+
+                      {(file || showPdfPasswordPrompt) && (
+                        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                          <p className="mb-2 font-medium">{pdfPasswordMessage || "If your PDF is encrypted, enter the password here before uploading."}</p>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="password"
+                              value={pdfPassword}
+                              onChange={(e) => setPdfPassword(e.target.value)}
+                              placeholder="PDF password"
+                              className="w-full rounded-md border border-amber-300 bg-white px-2 py-1.5 text-xs text-stone-700 outline-none dark:border-amber-700 dark:bg-stone-900 dark:text-stone-200"
+                            />
+                            <button
+                              onClick={() => uploadStatement()}
+                              disabled={isUploading || (!pdfPassword.trim() && !file)}
+                              className="rounded-md bg-amber-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-amber-700 disabled:bg-amber-400 border-none whitespace-nowrap"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Alerts bell */}
@@ -423,10 +446,41 @@ const Layout: React.FC = () => {
                   </div>
                 )}
 
+                {/* Identity — avatar with dropdown */}
                 {userEmail ? (
-                  <div className="flex items-center gap-2 bg-teal-50 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/60 rounded-lg px-3 py-1.5">
-                    <div className="w-2 h-2 rounded-full bg-teal-600"></div>
-                    <span className="text-xs font-semibold text-teal-800 dark:text-teal-300 max-w-[150px] truncate" title={userEmail}>{userEmail}</span>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowUserMenu(v => !v)}
+                      className="flex items-center gap-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 rounded-lg pl-1.5 pr-2.5 py-1.5 transition-all cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-full bg-teal-700 dark:bg-teal-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                        {userEmail.slice(0, 1).toUpperCase()}
+                      </div>
+                      <span className="text-xs font-semibold text-stone-700 dark:text-stone-200 max-w-[160px] truncate hidden sm:inline">{userEmail}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.25} stroke="currentColor" className="w-3.5 h-3.5 text-stone-400 hidden sm:inline">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    {showUserMenu && (
+                      <div className="absolute right-0 top-12 w-60 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl shadow-xl z-50 p-2">
+                        <div className="px-2.5 py-2 border-b border-stone-100 dark:border-stone-800 mb-1">
+                          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Signed in as</p>
+                          <p className="text-xs font-semibold text-stone-700 dark:text-stone-200 truncate mt-0.5">{userEmail}</p>
+                        </div>
+                        <button
+                          onClick={() => { setTheme(theme === "light" ? "dark" : "light"); setShowUserMenu(false); }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all cursor-pointer bg-transparent border-none text-left"
+                        >
+                          {theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+                        </button>
+                        <button
+                          onClick={() => { setShowUserMenu(false); handleLogout(); }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-xs font-semibold text-coral-600 dark:text-coral-400 hover:bg-coral-50 dark:hover:bg-coral-950/30 transition-all cursor-pointer bg-transparent border-none text-left"
+                        >
+                          Sign out
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
@@ -581,6 +635,28 @@ const Layout: React.FC = () => {
               </Field>
             </div>
             <Field label="Due date"><input type="date" required value={reminderDueDate} onChange={e => setReminderDueDate(e.target.value)} className="modal-input" /></Field>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="reminder-recurring"
+                checked={reminderIsRecurring}
+                onChange={e => setReminderIsRecurring(e.target.checked)}
+                className="w-4 h-4 accent-teal-700 cursor-pointer"
+              />
+              <label htmlFor="reminder-recurring" className="text-sm text-stone-700 dark:text-stone-300 cursor-pointer">
+                Repeats — auto-create the next reminder when this one is paid
+              </label>
+            </div>
+            {reminderIsRecurring && (
+              <Field label="Repeat frequency">
+                <select value={reminderFrequency} onChange={e => setReminderFrequency(e.target.value)} className="modal-input cursor-pointer">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </Field>
+            )}
             <SubmitButton>Create reminder</SubmitButton>
           </form>
         </Modal>

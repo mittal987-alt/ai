@@ -7,6 +7,7 @@ const Notifications: React.FC = () => {
     reminders,
     handleReminderPay,
     handleReminderDelete,
+    handleReminderSnooze,
     setShowReminderModal,
   } = useFinance();
 
@@ -125,15 +126,31 @@ const Notifications: React.FC = () => {
                   {group.items.map((r: any) => (
                     <div key={r.id} className={`p-3.5 rounded-lg border flex justify-between items-center text-xs font-medium ${group.style}`}>
                       <div className="min-w-0 flex-1">
-                        <p className="font-bold truncate">{r.name}</p>
+                        <p className="font-bold truncate flex items-center gap-1.5">
+                          {r.name}
+                          {r.is_recurring && (
+                            <span className="text-[8px] font-bold uppercase tracking-wider bg-white/60 dark:bg-stone-900/60 px-1.5 py-0.5 rounded-full opacity-80" title={`Repeats ${r.recurrence_frequency}`}>
+                              ↻ {r.recurrence_frequency}
+                            </span>
+                          )}
+                        </p>
                         <p className="opacity-85 font-mono font-semibold">₹{r.amount?.toLocaleString("en-IN")} • {r.due_date}</p>
                         <p className="text-[10px] font-bold mt-0.5">
                           {r.days_left < 0 ? `Overdue by ${Math.abs(r.days_left)} days` : r.days_left === 0 ? "Due today" : `${r.days_left} days left`}
                         </p>
                       </div>
-                      <div className="flex gap-1.5 ml-2">
-                        <button onClick={() => handleReminderPay(r.id)} className="bg-white/80 dark:bg-stone-800 hover:bg-white dark:hover:bg-stone-700 px-2 py-1 rounded-md border border-current font-black text-[9px] cursor-pointer">Pay</button>
-                        <button onClick={() => handleReminderDelete(r.id)} className="hover:text-coral-600 cursor-pointer p-1 text-stone-400 font-bold bg-transparent border-none" title="Delete">✕</button>
+                      <div className="flex flex-col gap-1 ml-2 items-end">
+                        <div className="flex gap-1.5">
+                          <button onClick={() => handleReminderPay(r.id)} className="bg-white/80 dark:bg-stone-800 hover:bg-white dark:hover:bg-stone-700 px-2 py-1 rounded-md border border-current font-black text-[9px] cursor-pointer">Pay</button>
+                          <button onClick={() => handleReminderDelete(r.id)} className="hover:text-coral-600 cursor-pointer p-1 text-stone-400 font-bold bg-transparent border-none" title="Delete">✕</button>
+                        </div>
+                        <button
+                          onClick={() => handleReminderSnooze(r.id, 3)}
+                          className="text-[9px] font-bold underline decoration-dotted opacity-70 hover:opacity-100 cursor-pointer bg-transparent border-none p-0"
+                          title="Push due date back 3 days"
+                        >
+                          Snooze 3d
+                        </button>
                       </div>
                     </div>
                   ))}
