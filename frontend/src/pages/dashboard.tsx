@@ -695,6 +695,47 @@ function Dashboard() {
       loadData();
     } catch (err) { console.error(err); }
   };
+  const handlePDFExport = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login first.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/report/pdf", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error(error);
+        alert("Failed to generate PDF");
+        return;
+      }
+
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "finance_report.pdf";
+
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("PDF download failed");
+    }
+  };
 
   const handleCSVExport = () => {
     const token = localStorage.getItem("token");
@@ -896,9 +937,8 @@ function Dashboard() {
       <div className="flex">
         {/* ============================== SIDEBAR ============================== */}
         <aside
-          className={`fixed lg:sticky top-0 z-30 h-screen w-72 shrink-0 bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 flex flex-col transition-transform duration-200 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          }`}
+          className={`fixed lg:sticky top-0 z-30 h-screen w-72 shrink-0 bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 flex flex-col transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+            }`}
         >
           <div className="flex items-center gap-3 px-6 py-6 border-b border-stone-200 dark:border-stone-800">
             <div className="w-9 h-9 rounded-md bg-teal-700 dark:bg-teal-600 text-white flex items-center justify-center font-serif font-bold text-lg">
@@ -922,11 +962,10 @@ function Dashboard() {
                 <button
                   key={item.key}
                   onClick={() => { setActiveTab(item.key); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer relative ${
-                    isActive
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer relative ${isActive
                       ? "bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300"
                       : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-700 dark:hover:text-stone-200"
-                  }`}
+                    }`}
                 >
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-teal-700 dark:bg-teal-400" />}
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" className="w-[18px] h-[18px] shrink-0">
@@ -1076,11 +1115,10 @@ function Dashboard() {
                         </div>
                         <div className="space-y-2">
                           {alertsData.alerts.map((alert: any, i: number) => (
-                            <div key={i} className={`p-3 rounded-lg text-xs font-medium border-l-4 ${
-                              alert.type === "critical" ? "bg-coral-50 dark:bg-coral-950/30 border-coral-500 text-coral-900 dark:text-coral-300" :
-                              alert.type === "warning" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-500 text-amber-900 dark:text-amber-300" :
-                              "bg-teal-50 dark:bg-teal-950/20 border-teal-500 text-teal-900 dark:text-teal-300"
-                            }`}>
+                            <div key={i} className={`p-3 rounded-lg text-xs font-medium border-l-4 ${alert.type === "critical" ? "bg-coral-50 dark:bg-coral-950/30 border-coral-500 text-coral-900 dark:text-coral-300" :
+                                alert.type === "warning" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-500 text-amber-900 dark:text-amber-300" :
+                                  "bg-teal-50 dark:bg-teal-950/20 border-teal-500 text-teal-900 dark:text-teal-300"
+                              }`}>
                               <p className="font-bold mb-0.5">{alert.title}</p>
                               <p className="opacity-80">{alert.message}</p>
                             </div>
@@ -1259,6 +1297,9 @@ function Dashboard() {
                         </svg>
                         Export CSV
                       </button>
+                      <button onClick={handlePDFExport}>
+                        PDF report
+                      </button>
                       <button
                         onClick={handleAutoCategorize}
                         disabled={isAutoCatting}
@@ -1286,7 +1327,7 @@ function Dashboard() {
                   />
                   <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200 cursor-pointer">
                     <option value="All">All categories</option>
-                    {["Income","Food","Travel","Shopping","Fuel","UPI","Cash","Others"].map(c => <option key={c} value={c}>{c}</option>)}
+                    {["Income", "Food", "Travel", "Shopping", "Fuel", "UPI", "Cash", "Others"].map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200 cursor-pointer">
                     <option value="All">All types</option>
@@ -1383,7 +1424,7 @@ function Dashboard() {
                         <p className="text-[11px] font-extrabold text-stone-500 dark:text-stone-400 mb-2 uppercase tracking-wide">Set category budget</p>
                         <div className="flex gap-2">
                           <select value={budgetCategory} onChange={(e) => setBudgetCategory(e.target.value)} className="text-xs w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1.5 focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200 cursor-pointer">
-                            {["Food","Travel","Shopping","Fuel","UPI","Cash","Income","Others"].map(c => <option key={c} value={c}>{c}</option>)}
+                            {["Food", "Travel", "Shopping", "Fuel", "UPI", "Cash", "Income", "Others"].map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                           <input type="number" required value={budgetAmount} onChange={(e) => setBudgetAmount(e.target.value)} placeholder="Amount" className="text-xs w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1.5 focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200" />
                           <button type="submit" className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-3 py-1.5 rounded-md cursor-pointer transition-all">Save</button>
@@ -1567,7 +1608,7 @@ function Dashboard() {
                   const daysInMonth = getDaysInMonth(year, month);
                   const firstDay = getFirstDayOfMonth(year, month);
                   const dueDates = getSubscriptionDueDates();
-                  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+                  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
                   const today = new Date();
                   return (
                     <SectionCard
@@ -1955,7 +1996,7 @@ function Dashboard() {
             <div className="grid grid-cols-2 gap-4">
               <Field label="Account type">
                 <select value={accountType} onChange={e => setAccountType(e.target.value)} className="modal-input cursor-pointer">
-                  {["Bank","Credit Card","Cash","UPI Wallet"].map(t => <option key={t}>{t}</option>)}
+                  {["Bank", "Credit Card", "Cash", "UPI Wallet"].map(t => <option key={t}>{t}</option>)}
                 </select>
               </Field>
               <Field label="Balance (₹)"><input type="number" value={accountBalance} onChange={e => setAccountBalance(e.target.value)} placeholder="0" className="modal-input" /></Field>
@@ -2001,7 +2042,7 @@ function Dashboard() {
               <Field label="Amount (₹)"><input type="number" required value={subAmount} onChange={(e) => setSubAmount(e.target.value)} placeholder="649" className="modal-input" /></Field>
               <Field label="Category">
                 <select value={subCategory} onChange={(e) => setSubCategory(e.target.value)} className="modal-input cursor-pointer">
-                  {["Entertainment","Utilities","Rent","Shopping","Others"].map(c => <option key={c}>{c}</option>)}
+                  {["Entertainment", "Utilities", "Rent", "Shopping", "Others"].map(c => <option key={c}>{c}</option>)}
                 </select>
               </Field>
             </div>
@@ -2029,7 +2070,7 @@ function Dashboard() {
             </div>
             <Field label="Category">
               <select value={reminderCategory} onChange={(e) => setReminderCategory(e.target.value)} className="modal-input">
-                {["EMI","Credit Card","Rent","Utilities","Subscription","Insurance","Others"].map(c => <option key={c}>{c}</option>)}
+                {["EMI", "Credit Card", "Rent", "Utilities", "Subscription", "Insurance", "Others"].map(c => <option key={c}>{c}</option>)}
               </select>
             </Field>
             <SubmitButton>Add reminder</SubmitButton>
@@ -2048,7 +2089,7 @@ function Dashboard() {
             <div className="grid grid-cols-2 gap-4">
               <Field label="Category">
                 <select value={txCategory} onChange={(e) => setTxCategory(e.target.value)} className="modal-input cursor-pointer">
-                  {["Shopping","Food","Travel","Fuel","UPI","Cash","Income","Others"].map(c => <option key={c}>{c}</option>)}
+                  {["Shopping", "Food", "Travel", "Fuel", "UPI", "Cash", "Income", "Others"].map(c => <option key={c}>{c}</option>)}
                 </select>
               </Field>
               <Field label="Type">
@@ -2176,11 +2217,10 @@ function SubPills({ options, active, onChange }: { options: { key: string; label
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`text-xs font-bold px-3.5 py-2 rounded-full border transition-all cursor-pointer ${
-            active === o.key
+          className={`text-xs font-bold px-3.5 py-2 rounded-full border transition-all cursor-pointer ${active === o.key
               ? "bg-teal-700 border-teal-700 text-white"
               : "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800"
-          }`}
+            }`}
         >
           {o.label}
         </button>

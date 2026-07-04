@@ -1,28 +1,30 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List
+
 from app.database import get_db
 from app import models, schemas
-from fastapi import HTTPException
+from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
-def get_user_id(email: str, db: Session):
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user.id
 
-@router.get("/")
-def get_accounts(email: str, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
-    accounts = db.query(models.Account).filter(models.Account.user_id == user_id).all()
-    return accounts
+@router.get("/", response_model=List[schemas.AccountResponse])
+def get_accounts(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return db.query(models.Account).filter(models.Account.user_id == current_user.id).all()
+
 
 @router.post("/", response_model=schemas.AccountResponse)
-def create_account(email: str, data: schemas.AccountCreate, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
+def create_account(
+    data: schemas.AccountCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     account = models.Account(
-        user_id=user_id,
+        user_id=current_user.id,
         name=data.name,
         account_type=data.account_type,
         balance=data.balance
@@ -32,12 +34,17 @@ def create_account(email: str, data: schemas.AccountCreate, db: Session = Depend
     db.refresh(account)
     return account
 
+
 @router.put("/{account_id}", response_model=schemas.AccountResponse)
-def update_account(account_id: int, email: str, data: schemas.AccountCreate, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
+def update_account(
+    account_id: int,
+    data: schemas.AccountCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     account = db.query(models.Account).filter(
         models.Account.id == account_id,
-        models.Account.user_id == user_id
+        models.Account.user_id == current_user.id
     ).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -48,12 +55,16 @@ def update_account(account_id: int, email: str, data: schemas.AccountCreate, db:
     db.refresh(account)
     return account
 
+
 @router.delete("/{account_id}")
-def delete_account(account_id: int, email: str, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
+def delete_account(
+    account_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     account = db.query(models.Account).filter(
         models.Account.id == account_id,
-        models.Account.user_id == user_id
+        models.Account.user_id == current_user.id
     ).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")

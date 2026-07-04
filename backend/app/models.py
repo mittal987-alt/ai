@@ -8,7 +8,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100))
-    
+
     email = Column(String(100), unique=True)
     password = Column(String(255))
     created_at = Column(DateTime(timezone=True),
@@ -173,4 +173,27 @@ class Loan(Base):
     outstanding_amount = Column(Float)
     lender_name = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class DailyBrief(Base):
+    """
+    One row per user per day, generated automatically by the nightly
+    scheduler (app/services/scheduler.py). Stores a snapshot so the
+    frontend can fetch it instantly instead of recomputing on every load.
+    """
+    __tablename__ = "daily_briefs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    brief_date = Column(Date)  # the date this brief was generated for
+
+    yesterday_spend = Column(Float, default=0.0)
+    yesterday_income = Column(Float, default=0.0)
+    category_breakdown = Column(String)  # JSON string: {"Food": 340.0, ...}
+    bills_due_today = Column(String)     # JSON string: [{"name": ..., "amount": ..., "source": ...}, ...]
+
+    recurring_triggered_count = Column(Integer, default=0)
+    alerts_critical_count = Column(Integer, default=0)
+    alerts_warning_count = Column(Integer, default=0)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())

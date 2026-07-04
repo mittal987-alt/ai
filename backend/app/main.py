@@ -34,6 +34,9 @@ from app.routes.loans import router as loans_router
 from app.routes.currency import router as currency_router
 from app.routes.pdf_report import router as pdf_report_router
 from app.routes.import_csv import router as import_csv_router
+# Daily automation
+from app.routes.daily_brief import router as daily_brief_router
+from app.services.scheduler import start_scheduler
 
 # Auto-create tables (e.g. budgets table)
 Base.metadata.create_all(bind=engine)
@@ -77,6 +80,13 @@ app.include_router(loans_router)
 app.include_router(currency_router)
 app.include_router(pdf_report_router)
 app.include_router(import_csv_router)
+# Daily automation
+app.include_router(daily_brief_router)
+
+
+@app.on_event("startup")
+def on_startup():
+    start_scheduler()
 
 
 @app.get("/")

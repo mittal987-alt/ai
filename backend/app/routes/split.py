@@ -1,29 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List
+
 from app.database import get_db
 from app import models, schemas
-from typing import List
+from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/splits", tags=["splits"])
 
-def get_user_id(email: str, db: Session):
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user.id
 
 @router.get("/", response_model=List[schemas.SharedExpenseResponse])
-def get_splits(email: str, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
+def get_splits(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     return db.query(models.SharedExpense).filter(
-        models.SharedExpense.user_id == user_id
+        models.SharedExpense.user_id == current_user.id
     ).order_by(models.SharedExpense.created_at.desc()).all()
 
+
 @router.post("/", response_model=schemas.SharedExpenseResponse)
-def create_split(email: str, data: schemas.SharedExpenseCreate, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
+def create_split(
+    data: schemas.SharedExpenseCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     split = models.SharedExpense(
-        user_id=user_id,
+        user_id=current_user.id,
         description=data.description,
         total_amount=data.total_amount,
         friend_name=data.friend_name,
@@ -35,12 +38,16 @@ def create_split(email: str, data: schemas.SharedExpenseCreate, db: Session = De
     db.refresh(split)
     return split
 
+
 @router.put("/{split_id}/settle", response_model=schemas.SharedExpenseResponse)
-def settle_split(split_id: int, email: str, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
+def settle_split(
+    split_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     split = db.query(models.SharedExpense).filter(
         models.SharedExpense.id == split_id,
-        models.SharedExpense.user_id == user_id
+        models.SharedExpense.user_id == current_user.id
     ).first()
     if not split:
         raise HTTPException(status_code=404, detail="Split not found")
@@ -49,12 +56,16 @@ def settle_split(split_id: int, email: str, db: Session = Depends(get_db)):
     db.refresh(split)
     return split
 
+
 @router.delete("/{split_id}")
-def delete_split(split_id: int, email: str, db: Session = Depends(get_db)):
-    user_id = get_user_id(email, db)
+def delete_split(
+    split_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     split = db.query(models.SharedExpense).filter(
         models.SharedExpense.id == split_id,
-        models.SharedExpense.user_id == user_id
+        models.SharedExpense.user_id == current_user.id
     ).first()
     if not split:
         raise HTTPException(status_code=404, detail="Split not found")

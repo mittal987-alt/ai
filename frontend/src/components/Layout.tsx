@@ -13,6 +13,7 @@ import { useFinance } from "../context/FinanceContext";
 
 const NAV_LINKS: { to: string; label: string; badge?: number; end?: boolean }[] = [
   { to: "/", label: "Overview", end: true },
+  { to: "/daily-brief", label: "Daily brief" },
   { to: "/notifications", label: "Notifications" },
   { to: "/goals", label: "Savings goals" },
   { to: "/subscriptions", label: "Subscriptions & bills" },

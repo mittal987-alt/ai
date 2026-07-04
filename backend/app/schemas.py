@@ -1,7 +1,6 @@
-
 from pydantic import BaseModel, EmailStr
 from datetime import date
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from datetime import datetime
 
@@ -226,3 +225,16 @@ class LoanResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+# ─── Daily Brief (scheduler-generated) ────────────────────────────────────────
+
+class DailyBriefResponse(BaseModel):
+    brief_date: Optional[date] = None
+    yesterday_spend: float = 0.0
+    yesterday_income: float = 0.0
+    category_breakdown: Dict[str, float] = {}
+    bills_due_today: List[Dict[str, Any]] = []
+    recurring_triggered_count: int = 0
+    alerts_critical_count: int = 0
+    alerts_warning_count: int = 0
+    generated: bool = True

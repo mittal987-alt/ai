@@ -40,6 +40,66 @@ def _advance_date(d: date, frequency: str) -> date:
     return d
 
 
+def trigger_due_for_user(db: Session, user_id: int) -> int:
+    """
+    Checks all active recurring transactions for one user whose
+    next_date <= today, creates actual Transaction records, and advances
+    their next_date. Returns the number created. Shared by the manual
+    /recurring/trigger route and the nightly scheduler.
+    """
+    today = date.today()
+    due = db.query(RecurringTransaction).filter(
+        RecurringTransaction.user_id == user_id,
+        RecurringTransaction.is_active == True,
+        RecurringTransaction.next_date <= today,
+    ).all()
+
+    created_count = 0
+    for rec in due:
+        tx = Transaction(
+            user_id=user_id,
+            transaction_date=rec.next_date,
+            description=f"[Auto] {rec.description}",
+            amount=rec.amount,
+            category=rec.category,
+            transaction_type=rec.transaction_type,
+        )
+        db.add(tx)
+        rec.next_date = _advance_date(rec.next_date, rec.frequency)
+        created_count += 1
+
+    return created_count
+
+
+def trigger_due_all_users(db: Session) -> dict:
+    """
+    Same as trigger_due_for_user but across every user in one pass —
+    used by the nightly scheduler so it doesn't need one query per user.
+    Returns {user_id: count_created}.
+    """
+    today = date.today()
+    due = db.query(RecurringTransaction).filter(
+        RecurringTransaction.is_active == True,
+        RecurringTransaction.next_date <= today,
+    ).all()
+
+    counts: dict = {}
+    for rec in due:
+        tx = Transaction(
+            user_id=rec.user_id,
+            transaction_date=rec.next_date,
+            description=f"[Auto] {rec.description}",
+            amount=rec.amount,
+            category=rec.category,
+            transaction_type=rec.transaction_type,
+        )
+        db.add(tx)
+        rec.next_date = _advance_date(rec.next_date, rec.frequency)
+        counts[rec.user_id] = counts.get(rec.user_id, 0) + 1
+
+    return counts
+
+
 # ─── GET all recurring transactions ───────────────────────────────────────────
 @router.get("/", response_model=list[RecurringTransactionResponse])
 def list_recurring(
@@ -121,38 +181,12 @@ def delete_recurring(
     return {"detail": "Deleted"}
 
 
-# ─── TRIGGER: fire all due recurring transactions ─────────────────────────────
+# ─── TRIGGER: fire all due recurring transactions for the logged-in user ─────
 @router.post("/trigger")
 def trigger_recurring(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Checks all active recurring transactions whose next_date <= today,
-    creates actual Transaction records, and advances their next_date.
-    """
-    today = date.today()
-    due = db.query(RecurringTransaction).filter(
-        RecurringTransaction.user_id == current_user.id,
-        RecurringTransaction.is_active == True,
-        RecurringTransaction.next_date <= today,
-    ).all()
-
-    created_count = 0
-    for rec in due:
-        # Create actual transaction
-        tx = Transaction(
-            user_id=current_user.id,
-            transaction_date=rec.next_date,
-            description=f"[Auto] {rec.description}",
-            amount=rec.amount,
-            category=rec.category,
-            transaction_type=rec.transaction_type,
-        )
-        db.add(tx)
-        # Advance next_date
-        rec.next_date = _advance_date(rec.next_date, rec.frequency)
-        created_count += 1
-
+    created_count = trigger_due_for_user(db, current_user.id)
     db.commit()
     return {"triggered": created_count, "message": f"Created {created_count} transaction(s) from recurring schedule."}

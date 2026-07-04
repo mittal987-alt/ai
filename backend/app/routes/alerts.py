@@ -18,13 +18,12 @@ def get_db():
         db.close()
 
 
-@router.get("/alerts")
-def get_alerts(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+def compute_alerts(user_id: int, db: Session) -> dict:
     """
-    Aggregates all financial alerts for the user:
+    Aggregates all financial alerts for a user. Extracted from the /alerts
+    route so it can be called both by that route (for the logged-in user)
+    and by the nightly scheduler (looping over every user) without
+    duplicating logic:
     - Budget overruns (critical)
     - Burn rate warning (critical)
     - Subscriptions due in 7 days (warning)
@@ -36,10 +35,10 @@ def get_alerts(
     current_month = today.strftime("%Y-%m")
 
     # ── Fetch data ──────────────────────────────────────────────
-    transactions = db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
-    budgets = db.query(Budget).filter(Budget.user_id == current_user.id).all()
-    goals = db.query(SavingsGoal).filter(SavingsGoal.user_id == current_user.id).all()
-    subscriptions = db.query(Subscription).filter(Subscription.user_id == current_user.id).all()
+    transactions = db.query(Transaction).filter(Transaction.user_id == user_id).all()
+    budgets = db.query(Budget).filter(Budget.user_id == user_id).all()
+    goals = db.query(SavingsGoal).filter(SavingsGoal.user_id == user_id).all()
+    subscriptions = db.query(Subscription).filter(Subscription.user_id == user_id).all()
 
     # ── Current month income & expenses ─────────────────────────
     current_month_txs = []
@@ -183,3 +182,11 @@ def get_alerts(
         "critical_count": critical_count,
         "warning_count": warning_count,
     }
+
+
+@router.get("/alerts")
+def get_alerts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return compute_alerts(current_user.id, db)

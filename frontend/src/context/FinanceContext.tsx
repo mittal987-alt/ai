@@ -110,6 +110,10 @@ interface FinanceContextType {
   setReminderDueDate: React.Dispatch<React.SetStateAction<string>>;
   reminderCategory: string;
   setReminderCategory: React.Dispatch<React.SetStateAction<string>>;
+  reminderIsRecurring: boolean;
+  setReminderIsRecurring: React.Dispatch<React.SetStateAction<boolean>>;
+  reminderFrequency: string;
+  setReminderFrequency: React.Dispatch<React.SetStateAction<string>>;
   autoCatResult: any;
   setAutoCatResult: React.Dispatch<React.SetStateAction<any>>;
   isAutoCatting: boolean;
@@ -187,6 +191,7 @@ interface FinanceContextType {
   handleReminderSubmit: (e: React.FormEvent) => Promise<void>;
   handleReminderPay: (id: number) => Promise<void>;
   handleReminderDelete: (id: number) => Promise<void>;
+  handleReminderSnooze: (id: number, days: number) => Promise<void>;
   handleAutoCategorize: () => Promise<void>;
   handleApplyBudgetPlan: () => Promise<void>;
   handleGoalSubmit: (e: React.FormEvent) => Promise<void>;
@@ -224,8 +229,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Authentication UI Modal State
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
-  const [reminderIsRecurring, setReminderIsRecurring] = useState(false);
-  const [reminderFrequency, setReminderFrequency] = useState("monthly"); // "daily" | "weekly" | "monthly" | "yearly"
   const [authName, setAuthName] = useState<string>("");
   const [authEmail, setAuthEmail] = useState<string>("");
   const [authPassword, setAuthPassword] = useState<string>("");
@@ -290,6 +293,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [reminderAmount, setReminderAmount] = useState("");
   const [reminderDueDate, setReminderDueDate] = useState(new Date().toISOString().split("T")[0]);
   const [reminderCategory, setReminderCategory] = useState("Others");
+  const [reminderIsRecurring, setReminderIsRecurring] = useState(false);
+  const [reminderFrequency, setReminderFrequency] = useState("monthly"); // "daily" | "weekly" | "monthly" | "yearly"
   const [autoCatResult, setAutoCatResult] = useState<any>(null);
   const [isAutoCatting, setIsAutoCatting] = useState(false);
   const [heatmapData, setHeatmapData] = useState<any>(null);
@@ -394,55 +399,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } else {
         setTransactions([]);
       }
-      
-const handleReminderSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!reminderName || !reminderAmount || !reminderDueDate) return;
-  const token = localStorage.getItem("token");
-  try {
-    const res = await fetch("http://127.0.0.1:8000/reminders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
-      body: JSON.stringify({
-        name: reminderName,
-        amount: parseFloat(reminderAmount),
-        due_date: reminderDueDate,
-        category: reminderCategory,
-        is_recurring: reminderIsRecurring,
-        recurrence_frequency: reminderIsRecurring ? reminderFrequency : null,
-      }),
-    });
-    if (res.ok) {
-      setShowReminderModal(false);
-      setReminderName(""); setReminderAmount(""); setReminderCategory("Others");
-      setReminderIsRecurring(false); setReminderFrequency("monthly");
-      loadData();
-    }
-  } catch (err) { console.error(err); }
-};
-
-// --- 3) New handler: snooze a reminder by N days ----------------------------
-const handleReminderSnooze = async (id: number, days: number) => {
-  const token = localStorage.getItem("token");
-  try {
-    await fetch(`http://127.0.0.1:8000/reminders/${id}/snooze/${days}`, {
-      method: "PUT",
-      headers: { Authorization: token ? `Bearer ${token}` : "" }
-    });
-    loadData();
-  } catch (err) { console.error(err); }
-};
-
-// --- 4) Export the new values in your context provider's value object -----
-// Find the big object passed to <FinanceContext.Provider value={{ ... }}>
-// and add these entries alongside the existing reminder* ones:
-//
-//   reminderIsRecurring, setReminderIsRecurring,
-//   reminderFrequency, setReminderFrequency,
-//   handleReminderSnooze,
-//
-// =============================================================================
-
 
       const insightsRes = await fetch("http://127.0.0.1:8000/insights", { headers });
       if (insightsRes.ok) {
@@ -749,11 +705,19 @@ const handleReminderSnooze = async (id: number, days: number) => {
       const res = await fetch("http://127.0.0.1:8000/reminders", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
-        body: JSON.stringify({ name: reminderName, amount: parseFloat(reminderAmount), due_date: reminderDueDate, category: reminderCategory })
+        body: JSON.stringify({
+          name: reminderName,
+          amount: parseFloat(reminderAmount),
+          due_date: reminderDueDate,
+          category: reminderCategory,
+          is_recurring: reminderIsRecurring,
+          recurrence_frequency: reminderIsRecurring ? reminderFrequency : null,
+        })
       });
       if (res.ok) {
         setShowReminderModal(false);
         setReminderName(""); setReminderAmount(""); setReminderCategory("Others");
+        setReminderIsRecurring(false); setReminderFrequency("monthly");
         loadData();
       }
     } catch (err) { console.error(err); }
@@ -776,6 +740,17 @@ const handleReminderSnooze = async (id: number, days: number) => {
     try {
       await fetch(`http://127.0.0.1:8000/reminders/${id}`, {
         method: "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      loadData();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleReminderSnooze = async (id: number, days: number) => {
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`http://127.0.0.1:8000/reminders/${id}/snooze/${days}`, {
+        method: "PUT",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
       loadData();
@@ -833,7 +808,7 @@ const handleReminderSnooze = async (id: number, days: number) => {
       ? "http://127.0.0.1:8000/goals"
       : `http://127.0.0.1:8000/goals/${selectedGoalId}`;
     const method = goalModalMode === "add" ? "POST" : "PUT";
-    
+
     try {
       const res = await fetch(url, {
         method,
@@ -899,7 +874,7 @@ const handleReminderSnooze = async (id: number, days: number) => {
       ? "http://127.0.0.1:8000/subscriptions"
       : `http://127.0.0.1:8000/subscriptions/${selectedSubId}`;
     const method = subModalMode === "add" ? "POST" : "PUT";
-    
+
     try {
       const res = await fetch(url, {
         method,
@@ -1165,7 +1140,7 @@ const handleReminderSnooze = async (id: number, days: number) => {
     };
 
     const token = localStorage.getItem("token");
-    const url = txModalMode === "add" 
+    const url = txModalMode === "add"
       ? "http://127.0.0.1:8000/transactions"
       : `http://127.0.0.1:8000/transactions/${selectedTxId}`;
     const method = txModalMode === "add" ? "POST" : "PUT";
@@ -1323,6 +1298,10 @@ const handleReminderSnooze = async (id: number, days: number) => {
         setReminderDueDate,
         reminderCategory,
         setReminderCategory,
+        reminderIsRecurring,
+        setReminderIsRecurring,
+        reminderFrequency,
+        setReminderFrequency,
         autoCatResult,
         setAutoCatResult,
         isAutoCatting,
@@ -1396,6 +1375,7 @@ const handleReminderSnooze = async (id: number, days: number) => {
         handleReminderSubmit,
         handleReminderPay,
         handleReminderDelete,
+        handleReminderSnooze,
         handleAutoCategorize,
         handleApplyBudgetPlan,
         handleGoalSubmit,
