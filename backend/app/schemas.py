@@ -13,6 +13,10 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
 class TransactionCreate(BaseModel):
     transaction_date: date
     description: str
@@ -20,6 +24,7 @@ class TransactionCreate(BaseModel):
     category: str
     transaction_type: str
     account_id: Optional[int] = None
+    currency: Optional[str] = "INR"  # if not INR, amount is converted to INR server-side on save
 
 class TransactionUpdate(BaseModel):
     transaction_date: date
@@ -28,6 +33,7 @@ class TransactionUpdate(BaseModel):
     category: str
     transaction_type: str
     account_id: Optional[int] = None
+    currency: Optional[str] = "INR"
 
 class BudgetCreate(BaseModel):
     category: str
@@ -151,6 +157,7 @@ class RecurringTransactionCreate(BaseModel):
     frequency: str          # daily / weekly / monthly / yearly
     next_date: date
     is_active: bool = True
+    currency: Optional[str] = "INR"
 
 class RecurringTransactionResponse(BaseModel):
     id: int
@@ -161,6 +168,9 @@ class RecurringTransactionResponse(BaseModel):
     frequency: str
     next_date: date
     is_active: bool
+    currency: str = "INR"
+    original_amount: Optional[float] = None
+    exchange_rate: float = 1.0
 
     class Config:
         from_attributes = True

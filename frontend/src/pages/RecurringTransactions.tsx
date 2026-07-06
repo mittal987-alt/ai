@@ -11,7 +11,7 @@ const freq_label: Record<string, string> = {
 };
 
 const RecurringTransactions: React.FC = () => {
-  const { userEmail, setShowAuthModal, setAuthMode } = useFinance();
+  const { userEmail, setShowAuthModal, setAuthMode, confirmAction, showToast } = useFinance();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
@@ -69,7 +69,7 @@ const RecurringTransactions: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this recurring transaction?")) return;
+    if (!(await confirmAction("Delete this recurring transaction?"))) return;
     try {
       await fetch(`${API}/recurring/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}` } });
       load();
@@ -81,7 +81,7 @@ const RecurringTransactions: React.FC = () => {
     try {
       const res = await fetch(`${API}/recurring/trigger`, { method: "POST", headers: { Authorization: `Bearer ${token()}` } });
       const data = await res.json();
-      alert(data.message);
+      showToast(data.message, "success");
       load();
     } catch (e) { console.error(e); }
     setTriggering(false);

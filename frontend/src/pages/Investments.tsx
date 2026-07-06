@@ -23,7 +23,7 @@ const typeBarColor: Record<string, string> = {
 };
 
 const Investments: React.FC = () => {
-  const { userEmail, setShowAuthModal, setAuthMode } = useFinance();
+  const { userEmail, setShowAuthModal, setAuthMode, confirmAction } = useFinance();
   const [investments, setInvestments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +95,7 @@ const Investments: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Remove this investment?")) return;
+    if (!(await confirmAction("Remove this investment?"))) return;
     await fetch(`${API}/investments/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}` } });
     load();
   };

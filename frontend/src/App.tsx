@@ -16,6 +16,7 @@ import Achievements from "./pages/Achievements";
 import RecurringTransactions from "./pages/RecurringTransactions";
 import Investments from "./pages/Investments";
 import Loans from "./pages/Loans";
+import Settings from "./pages/settings";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/recurring"     element={<RecurringTransactions />} />
           <Route path="/investments"   element={<Investments />} />
           <Route path="/loans"         element={<Loans />} />
+          <Route path="/settings"      element={<Settings />} />
         </Route>
       </Routes>
     </FinanceProvider>

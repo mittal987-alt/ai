@@ -24,7 +24,7 @@ function computeEmi(principal: number, rate: number, months: number): number {
 }
 
 const Loans: React.FC = () => {
-  const { userEmail, setShowAuthModal, setAuthMode } = useFinance();
+  const { userEmail, setShowAuthModal, setAuthMode, confirmAction } = useFinance();
   const [loans, setLoans] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -103,7 +103,7 @@ const Loans: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Remove this loan?")) return;
+    if (!(await confirmAction("Remove this loan?"))) return;
     await fetch(`${API}/loans/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}` } });
     load();
   };

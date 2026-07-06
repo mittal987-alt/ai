@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException, Depends , Header
+from fastapi import APIRouter, HTTPException, Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.schemas import UserCreate, UserLogin
-from app.models import User
+from app.schemas import UserCreate, UserLogin, ChangePasswordRequest
+from app.models import (
+    User, Transaction, Budget, SavingsGoal, Subscription, Account,
+    SharedExpense, PaymentReminder, RecurringTransaction, Investment,
+    Loan, DailyBrief,
+)
 from app.database import SessionLocal
+from app.services.auth import get_current_user
 
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -125,12 +130,75 @@ def profile(authorization: str = Header(None)):
 
     token = authorization.replace("Bearer ", "")
 
-    payload = jwt.decode(
-        token,
-        SECRET_KEY,
-        algorithms=[ALGORITHM]
-    )
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token"
+        )
 
     return {
         "email": payload["sub"]
     }
+
+
+# -------------------------
+# CHANGE PASSWORD
+# -------------------------
+@router.put("/profile/password")
+def change_password(
+    data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not pwd_context.verify(data.current_password, current_user.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Current password is incorrect"
+        )
+
+    current_user.password = pwd_context.hash(data.new_password)
+    db.commit()
+
+    return {"message": "Password updated successfully"}
+
+
+# -------------------------
+# DELETE ACCOUNT
+# -------------------------
+@router.delete("/profile")
+def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently deletes the user and everything owned by them. None of the
+    other tables have cascade-delete configured on their user_id foreign
+    key, so every table is cleaned up explicitly here first to avoid
+    foreign-key violations or orphaned rows.
+    """
+    user_id = current_user.id
+
+    db.query(Transaction).filter(Transaction.user_id == user_id).delete()
+    db.query(Budget).filter(Budget.user_id == user_id).delete()
+    db.query(SavingsGoal).filter(SavingsGoal.user_id == user_id).delete()
+    db.query(Subscription).filter(Subscription.user_id == user_id).delete()
+    db.query(SharedExpense).filter(SharedExpense.user_id == user_id).delete()
+    db.query(PaymentReminder).filter(PaymentReminder.user_id == user_id).delete()
+    db.query(RecurringTransaction).filter(RecurringTransaction.user_id == user_id).delete()
+    db.query(Investment).filter(Investment.user_id == user_id).delete()
+    db.query(Loan).filter(Loan.user_id == user_id).delete()
+    db.query(DailyBrief).filter(DailyBrief.user_id == user_id).delete()
+    # Accounts last among the referencing tables, since Transaction had an
+    # additional FK to Account that's already cleared by the delete above.
+    db.query(Account).filter(Account.user_id == user_id).delete()
+
+    db.delete(current_user)
+    db.commit()
+
+    return {"message": "Account deleted successfully"}

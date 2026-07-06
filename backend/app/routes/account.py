@@ -5,6 +5,7 @@ from typing import List
 from app.database import get_db
 from app import models, schemas
 from app.services.auth import get_current_user
+from app.models import Transaction
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -68,6 +69,13 @@ def delete_account(
     ).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
+
+    # Unlink transactions so the FK constraint is not violated
+    db.query(Transaction).filter(
+        Transaction.account_id == account_id,
+        Transaction.user_id == current_user.id
+    ).update({"account_id": None}, synchronize_session=False)
+
     db.delete(account)
     db.commit()
     return {"detail": "Account deleted"}

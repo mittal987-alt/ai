@@ -10,9 +10,10 @@ from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter  # Added for password handling
 
 from app.database import SessionLocal
-from app.models import Transaction, User
+from app.models import Transaction, User, UploadedDocument
 from app.services.parser import extract_transactions
 from app.services.auth import get_current_user
+from app.services.currency_service import convert_currency_logic
 
 router = APIRouter()
 reader = easyocr.Reader(['en'])
@@ -38,6 +39,7 @@ def ocr_extract_text(pdf_path: str) -> str:
 async def upload_statement(
     file: UploadFile = File(...),
     password: str = Form(None),  # <-- Added optional password form field
+    currency: str = Form("INR"),  # <-- Currency the statement is denominated in
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -47,6 +49,19 @@ async def upload_statement(
 
     if not file.filename.lower().endswith(".pdf"):
         return {"success": False, "message": "Only PDF files are allowed."}
+
+    # ---------- Resolve currency rate once (a statement is one currency) ----------
+    statement_currency = (currency or "INR").upper()
+    exchange_rate = 1.0
+    if statement_currency != "INR":
+        try:
+            conv = await convert_currency_logic(1.0, statement_currency, "INR")
+            exchange_rate = conv["rate"]
+        except ValueError:
+            # Unsupported currency code -- fall back to treating it as INR
+            # rather than failing the whole upload.
+            statement_currency = "INR"
+            exchange_rate = 1.0
 
     # ---------- Save uploaded PDF ----------
     contents = await file.read()
@@ -110,18 +125,37 @@ async def upload_statement(
                 "sample_text": extracted_text[:500]
             }
 
+        # ---------- Save Uploaded Document ----------
+        doc = UploadedDocument(
+            user_id=current_user.id,
+            filename=file.filename,
+            extracted_text=extracted_text
+        )
+        db.add(doc)
+
         saved = 0
         skipped = 0
 
         for tx in transactions:
             tx_date = tx.get("date") or date.today()
 
+            # Clean and parse amount safely (this is in the statement's own currency)
+            clean_amount = str(tx["amount"]).replace(",", "").replace("₹", "").strip()
+            original_amount_val = float(clean_amount)
+
+            if statement_currency == "INR":
+                final_amount = original_amount_val
+                stored_original_amount = None
+            else:
+                final_amount = round(original_amount_val * exchange_rate, 2)
+                stored_original_amount = original_amount_val
+
             duplicate = (
                 db.query(Transaction)
                 .filter(
                     Transaction.user_id == current_user.id,
                     Transaction.description == tx["description"],
-                    Transaction.amount == tx["amount"],
+                    Transaction.amount == final_amount,
                     Transaction.transaction_date == tx_date
                 )
                 .first()
@@ -136,14 +170,14 @@ async def upload_statement(
             if any(k in desc for k in ["/CR/", "SALARY", "CREDIT", "DEPOSIT"]):
                 transaction_type = "income"
 
-            # Clean and parse amount safely
-            clean_amount = str(tx["amount"]).replace(",", "").replace("₹", "").strip()
-
             transaction = Transaction(
                 user_id=current_user.id,
                 transaction_date=tx_date,
                 description=tx["description"],
-                amount=float(clean_amount),
+                amount=final_amount,
+                currency=statement_currency,
+                original_amount=stored_original_amount,
+                exchange_rate=exchange_rate,
                 category=tx.get("category", "Others"),
                 transaction_type=transaction_type
             )
@@ -158,6 +192,8 @@ async def upload_statement(
             "transactions_found": len(transactions),
             "transactions_saved": saved,
             "duplicates_skipped": skipped,
+            "currency": statement_currency,
+            "exchange_rate": exchange_rate,
             "message": "Bank statement processed successfully."
         }
 

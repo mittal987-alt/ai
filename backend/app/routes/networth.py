@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import User, Account, SavingsGoal, SharedExpense
+from app.models import User, Account, SavingsGoal, SharedExpense, Investment
 from app.services.auth import get_current_user
 
 router = APIRouter()
@@ -34,7 +34,10 @@ def get_net_worth(
     goals = db.query(SavingsGoal).filter(SavingsGoal.user_id == current_user.id).all()
     goals_saved = sum(g.current_amount for g in goals)
 
-    total_assets = account_total + goals_saved
+    investments = db.query(Investment).filter(Investment.user_id == current_user.id).all()
+    investments_total = sum(i.current_value for i in investments)
+
+    total_assets = account_total + goals_saved + investments_total
 
     # ── Liabilities (money owed BY user to others via splits) ────
     # In our model, amount_owed = friend owes user. So liabilities = 0 from splits.
@@ -70,6 +73,14 @@ def get_net_worth(
                 "amount": round(g.current_amount, 2),
                 "category": "goal"
             })
+    for inv in investments:
+        if inv.current_value > 0:
+            asset_breakdown.append({
+                "name": inv.name,
+                "type": inv.investment_type,
+                "amount": round(inv.current_value, 2),
+                "category": "investment"
+            })
 
     liability_breakdown = []
     for s in shared_expenses:
@@ -89,6 +100,7 @@ def get_net_worth(
         "net_worth": round(net_worth, 2),
         "account_total": round(account_total, 2),
         "goals_saved": round(goals_saved, 2),
+        "investments_total": round(investments_total, 2),
         "asset_breakdown": asset_breakdown,
         "liability_breakdown": liability_breakdown,
     }

@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import date
 import calendar
+from typing import List
+from pydantic import BaseModel
 
 from app.database import SessionLocal
 from app.models import Transaction, User, Budget
@@ -106,4 +108,50 @@ def get_budget_plan(
         "plan": plan,
         "total_suggested_budget": round(total_suggested, 2),
         "projected_savings": round(savings_buffer, 2),
+    }
+
+
+# ─── Apply suggested plan: bulk-upsert budgets ────────────────────────────────
+class BudgetEntry(BaseModel):
+    category: str
+    suggested_budget: float
+
+
+class ApplyPlanRequest(BaseModel):
+    plan: List[BudgetEntry]
+
+
+@router.post("/budget/plan/apply")
+def apply_budget_plan(
+    body: ApplyPlanRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk-applies the AI-suggested budget plan.
+    For each category in the plan:
+      - If a budget already exists for that category, update its amount.
+      - Otherwise, create a new budget row.
+    """
+    upserted = 0
+    for entry in body.plan:
+        existing = (
+            db.query(Budget)
+            .filter(Budget.user_id == current_user.id, Budget.category == entry.category)
+            .first()
+        )
+        if existing:
+            existing.amount = entry.suggested_budget
+        else:
+            db.add(Budget(
+                user_id=current_user.id,
+                category=entry.category,
+                amount=entry.suggested_budget
+            ))
+        upserted += 1
+
+    db.commit()
+    return {
+        "message": f"Applied {upserted} budget(s) from plan.",
+        "upserted": upserted
     }

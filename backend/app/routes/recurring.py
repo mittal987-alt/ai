@@ -4,6 +4,7 @@ Supports CRUD + manual trigger to fire all due recurring transactions
 into the actual transactions table.
 """
 from datetime import date, timedelta
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,7 @@ from app.database import SessionLocal
 from app.models import RecurringTransaction, Transaction, User
 from app.schemas import RecurringTransactionCreate, RecurringTransactionResponse
 from app.services.auth import get_current_user
+from app.services.currency_service import convert_currency_logic
 
 router = APIRouter(prefix="/recurring", tags=["recurring"])
 
@@ -40,12 +42,26 @@ def _advance_date(d: date, frequency: str) -> date:
     return d
 
 
+async def _resolve_currency(amount: float, currency: Optional[str]):
+    """Same pattern as transaction.py -- converts to INR, the app's home
+    currency. Returns (amount_in_inr, currency, original_amount, exchange_rate)."""
+    currency = (currency or "INR").upper()
+    if currency == "INR":
+        return amount, "INR", None, 1.0
+    result = await convert_currency_logic(amount, currency, "INR")
+    return result["converted"], currency, amount, result["rate"]
+
+
 def trigger_due_for_user(db: Session, user_id: int) -> int:
     """
     Checks all active recurring transactions for one user whose
     next_date <= today, creates actual Transaction records, and advances
     their next_date. Returns the number created. Shared by the manual
     /recurring/trigger route and the nightly scheduler.
+
+    rec.amount is already stored in INR (converted at create/update time),
+    so no currency conversion is needed here -- the currency metadata is
+    just copied across for display purposes.
     """
     today = date.today()
     due = db.query(RecurringTransaction).filter(
@@ -61,6 +77,9 @@ def trigger_due_for_user(db: Session, user_id: int) -> int:
             transaction_date=rec.next_date,
             description=f"[Auto] {rec.description}",
             amount=rec.amount,
+            currency=rec.currency,
+            original_amount=rec.original_amount,
+            exchange_rate=rec.exchange_rate,
             category=rec.category,
             transaction_type=rec.transaction_type,
         )
@@ -73,7 +92,7 @@ def trigger_due_for_user(db: Session, user_id: int) -> int:
 
 def trigger_due_all_users(db: Session) -> dict:
     """
-    Same as trigger_due_for_user but across every user in one pass —
+    Same as trigger_due_for_user but across every user in one pass --
     used by the nightly scheduler so it doesn't need one query per user.
     Returns {user_id: count_created}.
     """
@@ -90,6 +109,9 @@ def trigger_due_all_users(db: Session) -> dict:
             transaction_date=rec.next_date,
             description=f"[Auto] {rec.description}",
             amount=rec.amount,
+            currency=rec.currency,
+            original_amount=rec.original_amount,
+            exchange_rate=rec.exchange_rate,
             category=rec.category,
             transaction_type=rec.transaction_type,
         )
@@ -100,7 +122,7 @@ def trigger_due_all_users(db: Session) -> dict:
     return counts
 
 
-# ─── GET all recurring transactions ───────────────────────────────────────────
+# --- GET all recurring transactions ---
 @router.get("/", response_model=list[RecurringTransactionResponse])
 def list_recurring(
     current_user: User = Depends(get_current_user),
@@ -114,17 +136,23 @@ def list_recurring(
     )
 
 
-# ─── CREATE ───────────────────────────────────────────────────────────────────
+# --- CREATE ---
 @router.post("/", response_model=RecurringTransactionResponse)
-def create_recurring(
+async def create_recurring(
     data: RecurringTransactionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    final_amount, currency, original_amount, exchange_rate = await _resolve_currency(
+        data.amount, data.currency
+    )
     rec = RecurringTransaction(
         user_id=current_user.id,
         description=data.description,
-        amount=data.amount,
+        amount=final_amount,
+        currency=currency,
+        original_amount=original_amount,
+        exchange_rate=exchange_rate,
         category=data.category,
         transaction_type=data.transaction_type,
         frequency=data.frequency,
@@ -137,9 +165,9 @@ def create_recurring(
     return rec
 
 
-# ─── UPDATE ───────────────────────────────────────────────────────────────────
+# --- UPDATE ---
 @router.put("/{rec_id}", response_model=RecurringTransactionResponse)
-def update_recurring(
+async def update_recurring(
     rec_id: int,
     data: RecurringTransactionCreate,
     current_user: User = Depends(get_current_user),
@@ -151,8 +179,16 @@ def update_recurring(
     ).first()
     if not rec:
         raise HTTPException(status_code=404, detail="Recurring transaction not found")
+
+    final_amount, currency, original_amount, exchange_rate = await _resolve_currency(
+        data.amount, data.currency
+    )
+
     rec.description = data.description
-    rec.amount = data.amount
+    rec.amount = final_amount
+    rec.currency = currency
+    rec.original_amount = original_amount
+    rec.exchange_rate = exchange_rate
     rec.category = data.category
     rec.transaction_type = data.transaction_type
     rec.frequency = data.frequency
@@ -163,7 +199,7 @@ def update_recurring(
     return rec
 
 
-# ─── DELETE ───────────────────────────────────────────────────────────────────
+# --- DELETE ---
 @router.delete("/{rec_id}")
 def delete_recurring(
     rec_id: int,
@@ -181,7 +217,7 @@ def delete_recurring(
     return {"detail": "Deleted"}
 
 
-# ─── TRIGGER: fire all due recurring transactions for the logged-in user ─────
+# --- TRIGGER: fire all due recurring transactions for the logged-in user ---
 @router.post("/trigger")
 def trigger_recurring(
     current_user: User = Depends(get_current_user),

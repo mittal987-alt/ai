@@ -33,19 +33,19 @@ def insights(
     food = sum(
         t.amount
         for t in transactions
-        if t.category == "Food"
+        if t.category == "Food" and t.transaction_type == "expense"
     )
 
     travel = sum(
         t.amount
         for t in transactions
-        if t.category == "Travel"
+        if t.category == "Travel" and t.transaction_type == "expense"
     )
 
     shopping = sum(
         t.amount
         for t in transactions
-        if t.category == "Shopping"
+        if t.category == "Shopping" and t.transaction_type == "expense"
     )
 
     insights = []

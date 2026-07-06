@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from datetime import datetime
 
 from app.database import SessionLocal
-from app.models import Transaction, User, Budget, SavingsGoal
+from app.models import Transaction, User, Budget, SavingsGoal, UploadedDocument
 from app.services.auth import get_current_user
 
 router = APIRouter()
@@ -123,6 +123,7 @@ def get_gamification_stats(
     transactions = db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
     budgets = db.query(Budget).filter(Budget.user_id == current_user.id).all()
     goals = db.query(SavingsGoal).filter(SavingsGoal.user_id == current_user.id).all()
+    pdf_uploaded = db.query(UploadedDocument).filter(UploadedDocument.user_id == current_user.id).count() > 0
 
     total_tx = len(transactions)
 
@@ -180,7 +181,7 @@ def get_gamification_stats(
         "first_goal": len(goals) >= 1,
         "goal_completed": len(completed_goals) >= 1,
         "saver_50pct": savings_rate >= 0.5,
-        "pdf_uploaded": total_tx >= 5,  # Proxy for PDF upload (>5 txs often from PDF)
+        "pdf_uploaded": pdf_uploaded,
         "streak_7": streak >= 7,
         "streak_30": streak >= 30,
     }

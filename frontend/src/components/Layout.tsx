@@ -25,7 +25,8 @@ const NAV_LINKS: { to: string; label: string; badge?: number; end?: boolean }[] 
   { to: "/loans", label: "Loans" },
   { to: "/tax", label: "Tax estimator" },
   { to: "/planner", label: "Budget planner" },
-  { to: "/achievements", label: "Achievements" }
+  { to: "/achievements", label: "Achievements" },
+  { to: "/settings", label: "Settings" }
 ];
 
 // Fires a native browser notification once per reminder per day, only for
@@ -162,7 +163,12 @@ const Layout: React.FC = () => {
     setTxType,
     txDate,
     setTxDate,
+    txAccountId,
+    setTxAccountId,
     handleTxSubmit,
+    toasts,
+    confirmState,
+    respondConfirm,
     showAuthModal,
     authMode,
     authName,
@@ -595,6 +601,14 @@ const Layout: React.FC = () => {
                 </select>
               </Field>
             </div>
+            <Field label="Account (optional)">
+              <select value={txAccountId} onChange={(e) => setTxAccountId(e.target.value)} className="modal-input cursor-pointer">
+                <option value="">No account linked</option>
+                {accounts.map((a: any) => (
+                  <option key={a.id} value={a.id}>{a.name} ({a.account_type})</option>
+                ))}
+              </select>
+            </Field>
             <SubmitButton>{txModalMode === "add" ? "Create record" : "Save changes"}</SubmitButton>
           </form>
         </Modal>
@@ -707,6 +721,45 @@ const Layout: React.FC = () => {
               </form>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ============================== TOASTS ============================== */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-6 left-6 z-[60] flex flex-col gap-2 max-w-xs">
+          {toasts.map(t => (
+            <div
+              key={t.id}
+              className={`rounded-lg shadow-lg px-4 py-3 text-sm font-semibold text-white flex items-start gap-2 ${
+                t.type === "success" ? "bg-teal-700" : t.type === "error" ? "bg-coral-600" : "bg-stone-800"
+              }`}
+            >
+              <span className="flex-1">{t.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ============================== CONFIRM DIALOG ============================== */}
+      {confirmState && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-stone-900/55 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-150 dark:border-stone-800 max-w-sm w-full p-6">
+            <p className="text-sm font-semibold text-stone-800 dark:text-stone-100 mb-6">{confirmState.message}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => respondConfirm(false)}
+                className="flex-1 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-750 text-stone-600 dark:text-stone-300 text-sm font-bold py-2.5 rounded-lg transition-all cursor-pointer border-none"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => respondConfirm(true)}
+                className="flex-1 bg-coral-600 hover:bg-coral-700 text-white text-sm font-bold py-2.5 rounded-lg transition-all cursor-pointer border-none"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

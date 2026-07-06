@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 
 interface FinanceContextType {
   data: any;
@@ -71,6 +71,15 @@ interface FinanceContextType {
   setTxType: React.Dispatch<React.SetStateAction<string>>;
   txDate: string;
   setTxDate: React.Dispatch<React.SetStateAction<string>>;
+  txAccountId: string;
+  setTxAccountId: React.Dispatch<React.SetStateAction<string>>;
+
+  // Toasts & confirm dialog (replace browser alert()/confirm())
+  toasts: { id: number; message: string; type: "success" | "error" | "info" }[];
+  showToast: (message: string, type?: "success" | "error" | "info") => void;
+  confirmState: { message: string } | null;
+  confirmAction: (message: string) => Promise<boolean>;
+  respondConfirm: (result: boolean) => void;
 
   // Transaction Filters
   filterSearch: string;
@@ -264,6 +273,32 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [txCategory, setTxCategory] = useState("Shopping");
   const [txType, setTxType] = useState("expense");
   const [txDate, setTxDate] = useState(new Date().toISOString().split("T")[0]);
+  const [txAccountId, setTxAccountId] = useState("");
+
+  // Toasts & confirm dialog state
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" | "info" }[]>([]);
+  const toastIdRef = useRef(0);
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  };
+
+  const [confirmState, setConfirmState] = useState<{ message: string } | null>(null);
+  const confirmResolverRef = useRef<((result: boolean) => void) | null>(null);
+  const confirmAction = (message: string): Promise<boolean> => {
+    setConfirmState({ message });
+    return new Promise<boolean>(resolve => {
+      confirmResolverRef.current = resolve;
+    });
+  };
+  const respondConfirm = (result: boolean) => {
+    setConfirmState(null);
+    if (confirmResolverRef.current) {
+      confirmResolverRef.current(result);
+      confirmResolverRef.current = null;
+    }
+  };
 
   // Transaction Filters state
   const [filterSearch, setFilterSearch] = useState("");
@@ -559,13 +594,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const uploadStatement = async (enforcedPassword?: string) => {
     if (!file) {
-      alert("Please select a PDF file");
+      showToast("Please select a PDF file", "error");
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Please log in first to upload a statement.");
+      showToast("Please log in first to upload a statement.", "error");
       setAuthMode("login");
       setShowAuthModal(true);
       return;
@@ -595,7 +630,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsUploading(false);
 
       if (result.success) {
-        alert(`Statement uploaded successfully! Saved ${result.transactions_saved} transactions.`);
+        showToast(`Statement uploaded successfully! Saved ${result.transactions_saved} transactions.`, "success");
         setFile(null);
         setPdfPassword("");
         setShowPdfPasswordPrompt(false);
@@ -619,12 +654,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         setShowPdfPasswordPrompt(false);
         setPdfPasswordMessage("");
-        alert(result.message || result.detail || "Statement parsing/upload failed.");
+        showToast(result.message || result.detail || "Statement parsing/upload failed.", "error");
       }
     } catch (error) {
       console.error(error);
       setIsUploading(false);
-      alert("Upload failed. Make sure the backend server is running.");
+      showToast("Upload failed. Make sure the backend server is running.", "error");
     }
   };
 
@@ -644,7 +679,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         if (response.ok) {
           setAuthMode("login");
-          alert("Account created successfully! Please log in.");
+          showToast("Account created successfully! Please log in.", "success");
         } else {
           setAuthError(data.detail || "Signup failed");
         }
@@ -662,7 +697,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setShowAuthModal(false);
           setAuthPassword("");
           setAuthName("");
-          alert("Logged in successfully!");
+          showToast("Logged in successfully!", "success");
           loadData();
         } else {
           setAuthError(data.detail || "Invalid credentials");
@@ -679,7 +714,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleLogout = () => {
     localStorage.removeItem("token");
     setUserEmail(null);
-    alert("Logged out successfully.");
+    showToast("Logged out successfully.", "info");
     setTrendsData([]);
     setGoals([]);
     setSubscriptions([]);
@@ -735,7 +770,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleReminderDelete = async (id: number) => {
-    if (!confirm("Delete this reminder?")) return;
+    if (!(await confirmAction("Delete this reminder?"))) return;
     const token = localStorage.getItem("token");
     try {
       await fetch(`http://127.0.0.1:8000/reminders/${id}`, {
@@ -776,7 +811,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleApplyBudgetPlan = async () => {
     if (!budgetPlan || !budgetPlan.plan) return;
     const token = localStorage.getItem("token");
-    if (!confirm(`Apply suggested budgets for ${budgetPlan.plan.length} categories? This will create new budget entries.`)) return;
+    if (!(await confirmAction(`Apply suggested budgets for ${budgetPlan.plan.length} categories? This will create new budget entries.`))) return;
     setApplyingPlan(true);
     try {
       for (const item of budgetPlan.plan) {
@@ -788,7 +823,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           });
         }
       }
-      alert("Budget plan applied successfully!");
+      showToast("Budget plan applied successfully!", "success");
       loadData();
     } catch (err) { console.error(err); }
     finally { setApplyingPlan(false); }
@@ -832,7 +867,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleGoalDelete = async (goalId: number) => {
-    if (!confirm("Are you sure you want to delete this savings goal?")) return;
+    if (!(await confirmAction("Are you sure you want to delete this savings goal?"))) return;
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(`http://127.0.0.1:8000/goals/${goalId}`, {
@@ -899,7 +934,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleSubDelete = async (subId: number) => {
-    if (!confirm("Are you sure you want to remove this subscription?")) return;
+    if (!(await confirmAction("Are you sure you want to remove this subscription?"))) return;
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(`http://127.0.0.1:8000/subscriptions/${subId}`, {
@@ -939,7 +974,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         body: JSON.stringify(detected)
       });
       if (res.ok) {
-        alert(`${detected.name} added to subscriptions successfully!`);
+        showToast(`${detected.name} added to subscriptions successfully!`, "success");
         loadData();
       }
     } catch (err) {
@@ -971,7 +1006,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleAccountDelete = async (id: number) => {
-    if (!confirm("Delete this account?")) return;
+    if (!(await confirmAction("Delete this account?"))) return;
     const token = localStorage.getItem("token");
     try {
       await fetch(`http://127.0.0.1:8000/accounts/${id}`, {
@@ -1027,7 +1062,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleSplitDelete = async (id: number) => {
-    if (!confirm("Delete this split record?")) return;
+    if (!(await confirmAction("Delete this split record?"))) return;
     const token = localStorage.getItem("token");
     try {
       await fetch(`http://127.0.0.1:8000/splits/${id}`, {
@@ -1072,7 +1107,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         body: JSON.stringify({ category: budgetCategory, amount: parseFloat(budgetAmount) })
       });
       if (res.ok) {
-        alert("Budget target saved successfully!");
+        showToast("Budget target saved successfully!", "success");
         setBudgetAmount("");
         loadData();
       }
@@ -1082,7 +1117,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleBudgetDelete = async (budgetId: number) => {
-    if (!confirm("Are you sure you want to delete this budget target?")) return;
+    if (!(await confirmAction("Are you sure you want to delete this budget target?"))) return;
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(`http://127.0.0.1:8000/budgets/${budgetId}`, {
@@ -1136,7 +1171,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: parseFloat(txAmount),
       category: txCategory,
       transaction_type: txType,
-      transaction_date: txDate
+      transaction_date: txDate,
+      account_id: txAccountId ? parseInt(txAccountId) : null
     };
 
     const token = localStorage.getItem("token");
@@ -1156,13 +1192,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       if (res.ok) {
-        alert(`Transaction ${txModalMode === "add" ? "added" : "updated"} successfully!`);
+        showToast(`Transaction ${txModalMode === "add" ? "added" : "updated"} successfully!`, "success");
         setShowTxModal(false);
         setTxDescription("");
         setTxAmount("");
         setTxCategory("Shopping");
         setTxType("expense");
         setTxDate(new Date().toISOString().split("T")[0]);
+        setTxAccountId("");
         loadData();
       }
     } catch (err) {
@@ -1171,7 +1208,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const handleTxDelete = async (txId: number) => {
-    if (!confirm("Are you sure you want to delete this transaction record?")) return;
+    if (!(await confirmAction("Are you sure you want to delete this transaction record?"))) return;
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(`http://127.0.0.1:8000/transactions/${txId}`, {
@@ -1195,6 +1232,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTxCategory(tx.category);
     setTxType(tx.transaction_type);
     setTxDate(tx.transaction_date);
+    setTxAccountId(tx.account_id ? String(tx.account_id) : "");
     setTxModalMode("edit");
     setShowTxModal(true);
   };
@@ -1265,6 +1303,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTxType,
         txDate,
         setTxDate,
+        txAccountId,
+        setTxAccountId,
+        toasts,
+        showToast,
+        confirmState,
+        confirmAction,
+        respondConfirm,
         filterSearch,
         setFilterSearch,
         filterCategory,

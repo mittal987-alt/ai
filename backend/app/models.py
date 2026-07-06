@@ -24,7 +24,7 @@ class Transaction(Base):
     transaction_date = Column(Date)
     description = Column(String(255))
     amount = Column(Float)
-    currency = Column(String(10), default="USD")
+    currency = Column(String(10), default="INR")
     original_amount = Column(Float, nullable=True)
     exchange_rate = Column(Float, default=1.0)
 
@@ -39,6 +39,7 @@ class UploadedDocument(Base):
     __tablename__ = "uploaded_documents"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable for existing rows
     filename = Column(String(255))
     extracted_text = Column(String)
     created_at = Column(
@@ -133,6 +134,9 @@ class RecurringTransaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     description = Column(String(255))
     amount = Column(Float)
+    currency = Column(String(10), default="INR")
+    original_amount = Column(Float, nullable=True)
+    exchange_rate = Column(Float, default=1.0)
     category = Column(String(100))
     transaction_type = Column(String(20))  # income / expense
     frequency = Column(String(50))         # daily / weekly / monthly / yearly

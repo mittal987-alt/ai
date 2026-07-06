@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import date
+from typing import Optional
 
 from app.database import SessionLocal
-from app.models import Transaction, User
+from app.models import Transaction, User, Account
 from app.schemas import TransactionCreate, TransactionUpdate
 from app.services.auth import get_current_user
+from app.services.currency_service import convert_currency_logic
 
 router = APIRouter()
 
@@ -16,6 +18,48 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _get_owned_account(db: Session, account_id: int, user_id: int) -> Account:
+    account = db.query(Account).filter(
+        Account.id == account_id,
+        Account.user_id == user_id
+    ).first()
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    return account
+
+
+def _apply_to_balance(account: Account, amount: float, transaction_type: str) -> None:
+    """Income adds to the account balance, expense subtracts from it.
+    `amount` is always the INR-converted value -- accounts are always INR."""
+    if transaction_type == "income":
+        account.balance += amount
+    else:
+        account.balance -= amount
+
+
+def _reverse_from_balance(account: Account, amount: float, transaction_type: str) -> None:
+    """Undoes a previously-applied transaction's effect on the balance."""
+    if transaction_type == "income":
+        account.balance -= amount
+    else:
+        account.balance += amount
+
+
+async def _resolve_currency(amount: float, currency: Optional[str]):
+    """
+    Given an amount entered in `currency`, returns the tuple used to store
+    the transaction: (amount_in_inr, currency, original_amount, exchange_rate).
+    INR is the app's home currency -- everything downstream (budgets, goals,
+    account balances, dashboards) assumes `amount` is INR.
+    """
+    currency = (currency or "INR").upper()
+    if currency == "INR":
+        return amount, "INR", None, 1.0
+
+    result = await convert_currency_logic(amount, currency, "INR")
+    return result["converted"], currency, amount, result["rate"]
 
 
 @router.get("/transactions")
@@ -32,27 +76,40 @@ def get_transactions(
 
 
 @router.post("/transactions")
-def create_transaction(
+async def create_transaction(
     tx_data: TransactionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    final_amount, currency, original_amount, exchange_rate = await _resolve_currency(
+        tx_data.amount, tx_data.currency
+    )
+
     new_tx = Transaction(
         user_id=current_user.id,
         transaction_date=tx_data.transaction_date,
         description=tx_data.description,
-        amount=tx_data.amount,
+        amount=final_amount,
+        currency=currency,
+        original_amount=original_amount,
+        exchange_rate=exchange_rate,
         category=tx_data.category,
-        transaction_type=tx_data.transaction_type
+        transaction_type=tx_data.transaction_type,
+        account_id=tx_data.account_id
     )
     db.add(new_tx)
+
+    if tx_data.account_id is not None:
+        account = _get_owned_account(db, tx_data.account_id, current_user.id)
+        _apply_to_balance(account, final_amount, tx_data.transaction_type)
+
     db.commit()
     db.refresh(new_tx)
     return new_tx
 
 
 @router.put("/transactions/{tx_id}")
-def update_transaction(
+async def update_transaction(
     tx_id: int,
     tx_data: TransactionUpdate,
     current_user: User = Depends(get_current_user),
@@ -70,11 +127,34 @@ def update_transaction(
             detail="Transaction not found"
         )
 
+    # Undo this transaction's old effect on whichever account it used to be linked to.
+    # tx.amount is always already INR, so no conversion needed to reverse it.
+    if tx.account_id is not None:
+        old_account = db.query(Account).filter(
+            Account.id == tx.account_id,
+            Account.user_id == current_user.id
+        ).first()
+        if old_account:
+            _reverse_from_balance(old_account, tx.amount, tx.transaction_type)
+
+    final_amount, currency, original_amount, exchange_rate = await _resolve_currency(
+        tx_data.amount, tx_data.currency
+    )
+
     tx.transaction_date = tx_data.transaction_date
     tx.description = tx_data.description
-    tx.amount = tx_data.amount
+    tx.amount = final_amount
+    tx.currency = currency
+    tx.original_amount = original_amount
+    tx.exchange_rate = exchange_rate
     tx.category = tx_data.category
     tx.transaction_type = tx_data.transaction_type
+    tx.account_id = tx_data.account_id
+
+    # Apply the (possibly new) transaction to whichever account it's now linked to
+    if tx_data.account_id is not None:
+        new_account = _get_owned_account(db, tx_data.account_id, current_user.id)
+        _apply_to_balance(new_account, final_amount, tx_data.transaction_type)
 
     db.commit()
     db.refresh(tx)
@@ -98,6 +178,14 @@ def delete_transaction(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Transaction not found"
         )
+
+    if tx.account_id is not None:
+        account = db.query(Account).filter(
+            Account.id == tx.account_id,
+            Account.user_id == current_user.id
+        ).first()
+        if account:
+            _reverse_from_balance(account, tx.amount, tx.transaction_type)
 
     db.delete(tx)
     db.commit()

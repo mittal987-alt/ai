@@ -139,8 +139,8 @@ def detect_subscriptions(
         if len(tx_list) < 2:
             continue
 
-        # If already registered, skip
-        if desc in existing_names:
+        # Skip if this description already matches a registered subscription name
+        if any(existing_name in desc for existing_name in existing_names):
             continue
 
         # Sort by date
