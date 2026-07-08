@@ -11,6 +11,8 @@ interface FinanceContextType {
   setInsights: React.Dispatch<React.SetStateAction<any>>;
   userEmail: string | null;
   setUserEmail: React.Dispatch<React.SetStateAction<string | null>>;
+  userName: string | null;
+  setUserName: React.Dispatch<React.SetStateAction<string | null>>;
 
   // Auth Modals & Loading States
   showAuthModal: boolean;
@@ -250,6 +252,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [file, setFile] = useState<File | null>(null);
   const [insights, setInsights] = useState<any>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   // Authentication UI Modal State
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
@@ -588,9 +591,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (response.ok) {
         const result = await response.json();
         setUserEmail(result.email);
+        setUserName(result.name || null);
       } else {
         localStorage.removeItem("token");
         setUserEmail(null);
+        setUserName(null);
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -743,6 +748,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleLogout = () => {
     localStorage.removeItem("token");
     setUserEmail(null);
+    setUserName(null);
     showToast("Logged out successfully.", "info");
     setTrendsData([]);
     setGoals([]);
@@ -1482,6 +1488,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setInsights,
         userEmail,
         setUserEmail,
+        userName,
+        setUserName,
         showAuthModal,
         setShowAuthModal,
         authMode,

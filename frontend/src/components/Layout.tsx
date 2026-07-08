@@ -84,6 +84,7 @@ const Layout: React.FC = () => {
     pdfPasswordMessage,
     showPdfPasswordPrompt,
     userEmail,
+    userName,
     showAlertsPanel,
     setShowAlertsPanel,
     alertsData,
@@ -329,9 +330,11 @@ const Layout: React.FC = () => {
             {userEmail ? (
               <div className="flex items-center gap-2 px-1">
                 <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 flex items-center justify-center text-xs font-bold shrink-0">
-                  {userEmail.slice(0, 1).toUpperCase()}
+                  {(userName || userEmail).slice(0, 1).toUpperCase()}
                 </div>
-                <span className="text-xs font-semibold text-stone-600 dark:text-stone-300 truncate flex-1" title={userEmail}>{userEmail}</span>
+                <span className="text-xs font-semibold text-stone-600 dark:text-stone-300 truncate flex-1" title={userName || userEmail}>
+                  {userName || userEmail}
+                </span>
                 <button onClick={handleLogout} title="Sign out" className="text-stone-400 hover:text-coral-600 cursor-pointer p-1 bg-transparent border-none">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
