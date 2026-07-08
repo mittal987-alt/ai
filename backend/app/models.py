@@ -39,7 +39,7 @@ class UploadedDocument(Base):
     __tablename__ = "uploaded_documents"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable for existing rows
+    user_id = Column(Integer, ForeignKey("users.id"))
     filename = Column(String(255))
     extracted_text = Column(String)
     created_at = Column(
@@ -177,6 +177,22 @@ class Loan(Base):
     outstanding_amount = Column(Float)
     lender_name = Column(String(200), nullable=True)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Category(Base):
+    """
+    User-managed categories, shared across transactions, budgets,
+    subscriptions, reminders, and recurring transactions. Category fields
+    on those tables are plain strings (not foreign keys), so this list is
+    purely for populating dropdowns and consistent coloring in the UI --
+    deleting or renaming a category here never touches existing records.
+    """
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String(100))
+    color = Column(String(20), default="#8a8f98")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class DailyBrief(Base):

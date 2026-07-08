@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   PieChart,
   Pie,
@@ -54,8 +54,24 @@ const Overview: React.FC = () => {
     setShowTxModal,
     openEditTxModal,
     handleTxDelete,
-    filteredTransactions
+    handleBulkDelete,
+    handleBulkRecategorize,
+    scanReceipt,
+    isScanningReceipt,
+    filteredTransactions,
+    categories
   } = useFinance();
+
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkCategory, setBulkCategory] = useState("");
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = (ids: number[]) => {
+    setSelectedIds(prev => prev.length === ids.length ? [] : ids);
+  };
 
   // Ledger palette: teal / coral / gold / blue
   const chartColors = ["#0F6E56", "#D85A30", "#BA7517", "#378ADD"];
@@ -274,7 +290,7 @@ const Overview: React.FC = () => {
                   onChange={(e) => setBudgetCategory(e.target.value)}
                   className="text-xs w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1.5 focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200 cursor-pointer"
                 >
-                  {["Food","Travel","Shopping","Fuel","UPI","Cash","Income","Others"].map(c => <option key={c} value={c}>{c}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
                 <input
                   type="number"
@@ -412,6 +428,35 @@ const Overview: React.FC = () => {
                 ) : "Auto-categorize"}
               </button>
               <input
+                id="receipt-upload"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) scanReceipt(file);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={() => document.getElementById("receipt-upload")?.click()}
+                disabled={isScanningReceipt}
+                className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 disabled:opacity-60 text-stone-600 dark:text-stone-300 text-xs font-bold py-2 px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                {isScanningReceipt ? (
+                  <><span className="w-3.5 h-3.5 border-2 border-stone-400 border-t-transparent rounded-full animate-spin"></span>Scanning…</>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.822 1.316Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                    </svg>
+                    Scan receipt
+                  </>
+                )}
+              </button>
+              <input
                 id="csv-upload"
                 type="file"
                 accept=".csv"
@@ -482,7 +527,7 @@ const Overview: React.FC = () => {
             className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200 cursor-pointer"
           >
             <option value="All">All categories</option>
-            {["Income","Food","Travel","Shopping","Fuel","UPI","Cash","Others"].map(c => <option key={c} value={c}>{c}</option>)}
+            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
           <select
             value={filterType}
@@ -495,6 +540,41 @@ const Overview: React.FC = () => {
           </select>
         </div>
 
+        {selectedIds.length > 0 && (
+          <div className="mb-5 bg-teal-50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900 rounded-lg p-3 flex flex-wrap items-center gap-3">
+            <span className="text-xs font-bold text-teal-800 dark:text-teal-300">{selectedIds.length} selected</span>
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkCategory}
+                onChange={(e) => setBulkCategory(e.target.value)}
+                className="bg-white dark:bg-stone-900 border border-teal-200 dark:border-teal-800 rounded-md px-2 py-1.5 text-xs text-stone-700 dark:text-stone-200 cursor-pointer"
+              >
+                <option value="">Recategorize to…</option>
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+              <button
+                onClick={() => { if (bulkCategory) { handleBulkRecategorize(selectedIds, bulkCategory); setSelectedIds([]); setBulkCategory(""); } }}
+                disabled={!bulkCategory}
+                className="bg-teal-700 hover:bg-teal-800 disabled:bg-teal-300 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-all cursor-pointer border-none"
+              >
+                Apply
+              </button>
+            </div>
+            <button
+              onClick={() => { handleBulkDelete(selectedIds); setSelectedIds([]); }}
+              className="bg-coral-600 hover:bg-coral-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-all cursor-pointer border-none ml-auto"
+            >
+              Delete selected
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="text-xs font-bold text-stone-500 hover:text-stone-700 bg-transparent border-none cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {autoCatResult && (
           <div className="mb-5 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg p-3 flex justify-between items-center text-xs text-stone-700 dark:text-stone-300">
             <span className="font-semibold">{autoCatResult.message}</span>
@@ -506,6 +586,16 @@ const Overview: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200 dark:border-stone-800 text-stone-400 dark:text-stone-500 text-[11px] font-bold uppercase tracking-wider">
+                {userEmail && (
+                  <th className="pb-3 pl-1 w-8">
+                    <input
+                      type="checkbox"
+                      checked={filteredTransactions.length > 0 && selectedIds.length === filteredTransactions.length}
+                      onChange={() => toggleSelectAll(filteredTransactions.map((t: any) => t.id))}
+                      className="w-3.5 h-3.5 accent-teal-700 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="pb-3 pl-1">Date</th>
                 <th className="pb-3">Description</th>
                 <th className="pb-3">Category</th>
@@ -518,9 +608,19 @@ const Overview: React.FC = () => {
                   const isIncome = t.transaction_type === "income" || t.category === "Income";
                   return (
                     <tr key={t.id} className="hover:bg-stone-50/60 dark:hover:bg-stone-850/30 transition-colors group">
+                      {userEmail && (
+                        <td className="py-3.5 pl-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(t.id)}
+                            onChange={() => toggleSelect(t.id)}
+                            className="w-3.5 h-3.5 accent-teal-700 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="py-3.5 pl-1 text-xs font-mono text-stone-500 dark:text-stone-400">{t.transaction_date}</td>
                       <td className="py-3.5 font-semibold text-stone-800 dark:text-stone-200">{t.description}</td>
-                      <td className="py-3.5"><CategoryPill category={t.category} isIncome={isIncome} /></td>
+                      <td className="py-3.5"><CategoryPill category={t.category} isIncome={isIncome} categories={categories} /></td>
                       <td className={`py-3.5 text-right pr-1 font-mono font-bold ${isIncome ? "text-teal-700 dark:text-teal-450" : "text-stone-800 dark:text-stone-200"}`}>
                         <span className="mr-3">{isIncome ? "+" : "−"}₹{t.amount?.toLocaleString("en-IN") || 0}</span>
                         {userEmail && (
@@ -543,7 +643,7 @@ const Overview: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={4} className="text-center py-12 text-stone-400 dark:text-stone-500 font-medium">No matching transaction records found.</td>
+                  <td colSpan={userEmail ? 5 : 4} className="text-center py-12 text-stone-400 dark:text-stone-500 font-medium">No matching transaction records found.</td>
                 </tr>
               )}
             </tbody>
@@ -610,14 +710,15 @@ function EmptyState({ text, sub }: { text: string; sub: string }) {
   );
 }
 
-function CategoryPill({ category, isIncome }: { category: string; isIncome: boolean }) {
-  const styles: Record<string, string> = {
-    Food: "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400",
-    Travel: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400",
-    Shopping: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400"
-  };
-  const style = isIncome ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400" : (styles[category] || "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-350");
-  return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${style}`}>{category}</span>;
+function CategoryPill({ category, isIncome, categories }: { category: string; isIncome: boolean; categories: { id: number; name: string; color: string }[] }) {
+  const match = categories.find(c => c.name === category);
+  const dotColor = isIncome ? "#0F6E56" : (match?.color || "#8A8F98");
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }}></span>
+      {category}
+    </span>
+  );
 }
 
 export default Overview;

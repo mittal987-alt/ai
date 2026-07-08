@@ -35,6 +35,13 @@ class TransactionUpdate(BaseModel):
     account_id: Optional[int] = None
     currency: Optional[str] = "INR"
 
+class BulkTransactionIds(BaseModel):
+    ids: List[int]
+
+class BulkRecategorize(BaseModel):
+    ids: List[int]
+    category: str
+
 class BudgetCreate(BaseModel):
     category: str
     amount: float
@@ -236,7 +243,26 @@ class LoanResponse(BaseModel):
         from_attributes = True
 
 
-# ─── Daily Brief (scheduler-generated) ────────────────────────────────────────
+# --- Categories ---
+
+class CategoryCreate(BaseModel):
+    name: str
+    color: Optional[str] = "#8a8f98"
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+class CategoryResponse(BaseModel):
+    id: int
+    name: str
+    color: str
+
+    class Config:
+        from_attributes = True
+
+
+# --- Daily Brief (scheduler-generated) ---
 
 class DailyBriefResponse(BaseModel):
     brief_date: Optional[date] = None

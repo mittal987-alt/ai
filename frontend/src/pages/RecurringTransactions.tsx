@@ -3,7 +3,6 @@ import { useFinance } from "../context/FinanceContext";
 
 const API = "http://127.0.0.1:8000";
 
-const CATEGORIES = ["Shopping", "Food", "Travel", "Fuel", "UPI", "Cash", "Income", "Utilities", "Entertainment", "Others"];
 const FREQUENCIES = ["daily", "weekly", "monthly", "yearly"];
 
 const freq_label: Record<string, string> = {
@@ -11,7 +10,7 @@ const freq_label: Record<string, string> = {
 };
 
 const RecurringTransactions: React.FC = () => {
-  const { userEmail, setShowAuthModal, setAuthMode, confirmAction, showToast } = useFinance();
+  const { userEmail, setShowAuthModal, setAuthMode, confirmAction, showToast, supportedCurrencies, categories } = useFinance();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
@@ -26,6 +25,7 @@ const RecurringTransactions: React.FC = () => {
   const [frequency, setFrequency] = useState("monthly");
   const [nextDate, setNextDate] = useState(new Date().toISOString().split("T")[0]);
   const [isActive, setIsActive] = useState(true);
+  const [currency, setCurrency] = useState("INR");
 
   const token = () => localStorage.getItem("token");
   const headers = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
@@ -46,20 +46,22 @@ const RecurringTransactions: React.FC = () => {
     setEditId(null);
     setDescription(""); setAmount(""); setCategory("Others"); setTxType("expense");
     setFrequency("monthly"); setNextDate(new Date().toISOString().split("T")[0]); setIsActive(true);
+    setCurrency("INR");
     setShowModal(true);
   };
 
   const openEdit = (item: any) => {
     setEditId(item.id);
-    setDescription(item.description); setAmount(String(item.amount));
+    setDescription(item.description); setAmount(String(item.original_amount ?? item.amount));
     setCategory(item.category); setTxType(item.transaction_type);
     setFrequency(item.frequency); setNextDate(item.next_date); setIsActive(item.is_active);
+    setCurrency(item.currency || "INR");
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { description, amount: parseFloat(amount), category, transaction_type: txType, frequency, next_date: nextDate, is_active: isActive };
+    const payload = { description, amount: parseFloat(amount), category, transaction_type: txType, frequency, next_date: nextDate, is_active: isActive, currency };
     const url = editId ? `${API}/recurring/${editId}` : `${API}/recurring/`;
     const method = editId ? "PUT" : "POST";
     try {
@@ -176,6 +178,11 @@ const RecurringTransactions: React.FC = () => {
                       <span className={`font-mono font-bold text-sm ${item.transaction_type === "income" ? "text-teal-700 dark:text-teal-400" : "text-coral-600 dark:text-coral-400"}`}>
                         {item.transaction_type === "income" ? "+" : "−"}₹{item.amount?.toLocaleString("en-IN")}
                       </span>
+                      {item.currency && item.currency !== "INR" && (
+                        <span className="block text-[10px] text-stone-400 font-mono mt-0.5">
+                          {item.currency} {item.original_amount?.toLocaleString("en-IN")}
+                        </span>
+                      )}
                       <span className="inline-flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
                         <button onClick={() => openEdit(item)} className="text-stone-400 hover:text-teal-700 bg-transparent border-none cursor-pointer text-xs">✎</button>
                         <button onClick={() => handleDelete(item.id)} className="text-stone-400 hover:text-coral-600 bg-transparent border-none cursor-pointer text-xs">✕</button>
@@ -203,9 +210,17 @@ const RecurringTransactions: React.FC = () => {
                 <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Description</label>
                 <input required value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Monthly salary" className="modal-input" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Amount (₹)</label>
+                  <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Currency</label>
+                  <select value={currency} onChange={e => setCurrency(e.target.value)} className="modal-input cursor-pointer">
+                    {supportedCurrencies.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">
+                    Amount ({supportedCurrencies.find(c => c.code === currency)?.symbol || "₹"})
+                  </label>
                   <input required type="number" value={amount} onChange={e => setAmount(e.target.value)} className="modal-input" />
                 </div>
                 <div>
@@ -220,7 +235,7 @@ const RecurringTransactions: React.FC = () => {
                 <div>
                   <label className="block text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">Category</label>
                   <select value={category} onChange={e => setCategory(e.target.value)} className="modal-input cursor-pointer">
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>

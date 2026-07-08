@@ -73,6 +73,18 @@ interface FinanceContextType {
   setTxDate: React.Dispatch<React.SetStateAction<string>>;
   txAccountId: string;
   setTxAccountId: React.Dispatch<React.SetStateAction<string>>;
+  txCurrency: string;
+  setTxCurrency: React.Dispatch<React.SetStateAction<string>>;
+  statementCurrency: string;
+  setStatementCurrency: React.Dispatch<React.SetStateAction<string>>;
+  supportedCurrencies: { code: string; name: string; symbol: string }[];
+
+  // Custom categories
+  categories: { id: number; name: string; color: string }[];
+  loadCategories: () => Promise<void>;
+  handleCategoryCreate: (name: string, color: string) => Promise<boolean>;
+  handleCategoryUpdate: (id: number, name: string, color: string) => Promise<void>;
+  handleCategoryDelete: (id: number) => Promise<void>;
 
   // Toasts & confirm dialog (replace browser alert()/confirm())
   toasts: { id: number; message: string; type: "success" | "error" | "info" }[];
@@ -222,6 +234,10 @@ interface FinanceContextType {
   sendChatMessage: (e: React.FormEvent) => Promise<void>;
   handleTxSubmit: (e: React.FormEvent) => Promise<void>;
   handleTxDelete: (txId: number) => Promise<void>;
+  handleBulkDelete: (ids: number[]) => Promise<void>;
+  handleBulkRecategorize: (ids: number[], category: string) => Promise<void>;
+  scanReceipt: (file: File) => Promise<void>;
+  isScanningReceipt: boolean;
   openEditTxModal: (tx: any) => void;
   filteredTransactions: any[];
 }
@@ -274,6 +290,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [txType, setTxType] = useState("expense");
   const [txDate, setTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [txAccountId, setTxAccountId] = useState("");
+  const [txCurrency, setTxCurrency] = useState("INR");
+  const [isScanningReceipt, setIsScanningReceipt] = useState(false);
+  const [statementCurrency, setStatementCurrency] = useState("INR");
+  const [categories, setCategories] = useState<{ id: number; name: string; color: string }[]>([]);
+  const [supportedCurrencies, setSupportedCurrencies] = useState<{ code: string; name: string; symbol: string }[]>([
+    { code: "INR", name: "Indian Rupee", symbol: "₹" }
+  ]);
 
   // Toasts & confirm dialog state
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" | "info" }[]>([]);
@@ -581,6 +604,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (savedTheme) {
       setTheme(savedTheme);
     }
+    fetch("http://127.0.0.1:8000/currency/supported")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setSupportedCurrencies(data); })
+      .catch(err => console.error("Failed to load supported currencies:", err));
+    loadCategories();
   }, []);
 
   useEffect(() => {
@@ -608,6 +636,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("currency", statementCurrency);
     const passwordToSubmit = enforcedPassword || pdfPassword;
     if (passwordToSubmit) {
       formData.append("password", passwordToSubmit);
@@ -1162,6 +1191,46 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const scanReceipt = async (file: File) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      showToast("Please log in first to scan a receipt.", "error");
+      setAuthMode("login");
+      setShowAuthModal(true);
+      return;
+    }
+    setIsScanningReceipt(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("http://127.0.0.1:8000/receipts/scan", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await res.json();
+      if (result.success) {
+        setTxModalMode("add");
+        setTxDescription(result.description || "");
+        setTxAmount(result.amount ? String(result.amount) : "");
+        setTxDate(result.transaction_date || new Date().toISOString().split("T")[0]);
+        setTxCategory(result.category || "Others");
+        setTxType("expense");
+        setTxAccountId("");
+        setTxCurrency("INR");
+        setShowTxModal(true);
+        showToast("Receipt scanned — review the details before saving.", "info");
+      } else {
+        showToast(result.message || "Couldn't read that receipt.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Receipt scan failed. Make sure the backend server is running.", "error");
+    } finally {
+      setIsScanningReceipt(false);
+    }
+  };
+
   const handleTxSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!txDescription || !txAmount) return;
@@ -1172,7 +1241,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       category: txCategory,
       transaction_type: txType,
       transaction_date: txDate,
-      account_id: txAccountId ? parseInt(txAccountId) : null
+      account_id: txAccountId ? parseInt(txAccountId) : null,
+      currency: txCurrency
     };
 
     const token = localStorage.getItem("token");
@@ -1200,6 +1270,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTxType("expense");
         setTxDate(new Date().toISOString().split("T")[0]);
         setTxAccountId("");
+        setTxCurrency("INR");
         loadData();
       }
     } catch (err) {
@@ -1225,6 +1296,49 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const handleBulkDelete = async (ids: number[]) => {
+    if (ids.length === 0) return;
+    if (!(await confirmAction(`Delete ${ids.length} selected transaction${ids.length === 1 ? "" : "s"}? This can't be undone.`))) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/transactions/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ ids })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`Deleted ${data.deleted} transaction${data.deleted === 1 ? "" : "s"}.`, "success");
+        loadData();
+      } else {
+        showToast("Failed to delete selected transactions.", "error");
+      }
+    } catch (err) {
+      console.error("Error bulk-deleting transactions:", err);
+    }
+  };
+
+  const handleBulkRecategorize = async (ids: number[], category: string) => {
+    if (ids.length === 0) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/transactions/bulk/category", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ ids, category })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`Recategorized ${data.updated} transaction${data.updated === 1 ? "" : "s"} to "${category}".`, "success");
+        loadData();
+      } else {
+        showToast("Failed to recategorize selected transactions.", "error");
+      }
+    } catch (err) {
+      console.error("Error bulk-recategorizing transactions:", err);
+    }
+  };
+
   const openEditTxModal = (tx: any) => {
     setSelectedTxId(tx.id);
     setTxDescription(tx.description);
@@ -1233,8 +1347,119 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTxType(tx.transaction_type);
     setTxDate(tx.transaction_date);
     setTxAccountId(tx.account_id ? String(tx.account_id) : "");
+    setTxCurrency(tx.currency || "INR");
     setTxModalMode("edit");
     setShowTxModal(true);
+  };
+
+  const loadCategories = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://127.0.0.1:8000/categories", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) setCategories(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const handleCategoryCreate = async (name: string, color: string): Promise<boolean> => {
+    if (!name.trim()) return false;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ name: name.trim(), color })
+      });
+      if (res.ok) {
+        showToast(`Category "${name.trim()}" added.`, "success");
+        loadCategories();
+        return true;
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.detail || "Failed to add category.", "error");
+        return false;
+      }
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  const handleCategoryUpdate = async (id: number, name: string, color: string) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/categories/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ name, color })
+      });
+      if (res.ok) {
+        showToast("Category updated.", "success");
+        loadCategories();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleCategoryDelete = async (id: number) => {
+    if (!(await confirmAction("Delete this category? Existing entries already using it will keep their label."))) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/categories/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      if (res.ok) {
+        showToast("Category deleted.", "info");
+        loadCategories();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleBulkTxDelete = async (ids: number[]) => {
+    if (ids.length === 0) return;
+    if (!(await confirmAction(`Delete ${ids.length} transaction${ids.length === 1 ? "" : "s"}? This can't be undone.`))) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/transactions/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ ids })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`Deleted ${data.deleted} transaction${data.deleted === 1 ? "" : "s"}.`, "success");
+        loadData();
+      } else {
+        showToast("Failed to delete transactions.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Couldn't reach the backend.", "error");
+    }
+  };
+
+  const handleBulkTxRecategorize = async (ids: number[], category: string) => {
+    if (ids.length === 0) return;
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/transactions/bulk/category", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ ids, category })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`Recategorized ${data.updated} transaction${data.updated === 1 ? "" : "s"} to "${category}".`, "success");
+        loadData();
+      } else {
+        showToast("Failed to recategorize transactions.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Couldn't reach the backend.", "error");
+    }
   };
 
   const filteredTransactions = transactions.filter(t => {
@@ -1305,6 +1530,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTxDate,
         txAccountId,
         setTxAccountId,
+        txCurrency,
+        setTxCurrency,
+        statementCurrency,
+        setStatementCurrency,
+        supportedCurrencies,
+        categories,
+        loadCategories,
+        handleCategoryCreate,
+        handleCategoryUpdate,
+        handleCategoryDelete,
         toasts,
         showToast,
         confirmState,
@@ -1442,6 +1677,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         sendChatMessage,
         handleTxSubmit,
         handleTxDelete,
+        handleBulkDelete,
+        handleBulkRecategorize,
+        scanReceipt,
+        isScanningReceipt,
         openEditTxModal,
         filteredTransactions
       }}

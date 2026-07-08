@@ -37,9 +37,56 @@ from app.routes.import_csv import router as import_csv_router
 # Daily automation
 from app.routes.daily_brief import router as daily_brief_router
 from app.services.scheduler import start_scheduler
+# Custom categories
+from app.routes.categories import router as categories_router
+# Full data export/backup
+from app.routes.backup import router as backup_router
+# Receipt photo scan
+from app.routes.receipt import router as receipt_router
+
+# Clean up misspelled reciept.py file if it exists
+import os
+try:
+    reciept_path = os.path.join(os.path.dirname(__file__), "routes", "reciept.py")
+    if os.path.exists(reciept_path):
+        os.remove(reciept_path)
+except Exception as e:
+    print(f"Warning: Could not clean up old reciept.py: {e}")
 
 # Auto-create tables (e.g. budgets table)
 Base.metadata.create_all(bind=engine)
+
+# Database schema migrations/patches
+from sqlalchemy import text
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE uploaded_documents ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)"))
+        conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'INR'"))
+        conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS original_amount DOUBLE PRECISION"))
+        conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS exchange_rate DOUBLE PRECISION DEFAULT 1.0"))
+        conn.commit()
+except Exception as e:
+    print(f"Warning: Could not alter database tables: {e}")
+
+# Auto-correct incorrectly classified transactions
+try:
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            UPDATE transactions 
+            SET transaction_type = 'income'
+            WHERE transaction_type = 'expense'
+              AND (
+                description ~* '\\b(NEFT|IMPS|RTGS|UPI|CHG|INT)?CR\\b'
+                OR description ~* '\\b(NEFT|IMPS|RTGS|UPI|CHG|INT)?CR-'
+                OR description ~* '/CR/'
+                OR description ~* '\\b(SALARY|CREDIT|DEPOSIT|INTEREST|REFUND|DIVIDEND)\\b'
+              )
+        """))
+        conn.commit()
+        if result.rowcount > 0:
+            print(f"Database Patch: Auto-corrected {result.rowcount} transactions from expense to income.")
+except Exception as e:
+    print(f"Warning: Could not auto-correct transactions: {e}")
 
 app = FastAPI()
 
@@ -82,6 +129,12 @@ app.include_router(pdf_report_router)
 app.include_router(import_csv_router)
 # Daily automation
 app.include_router(daily_brief_router)
+# Custom categories
+app.include_router(categories_router)
+# Full data export/backup
+app.include_router(backup_router)
+# Receipt photo scan
+app.include_router(receipt_router)
 
 
 @app.on_event("startup")

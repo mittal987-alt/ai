@@ -42,7 +42,8 @@ def extract_transactions(text: str) -> list:
     # 1. (\d{2}\s*[./-]\s*\d{2}\s*[./-]\s*\d{2,4}) -> Matches dates even if OCR leaves spaces inside them
     # 2. (.*?) -> Captures description text dynamically across newlines
     # 3. (-?[\d,]+\.\d{2}) -> Captures amount located at the end of the block
-    pattern = r"(\d{2}\s*[./-]\s*\d{2}\s*[./-]\s*\d{2,4})\s+(.*?)\s+(-?[\d,]+\.\d{2})"
+    # 4. \s*(CR|DR|CR/|DR/|\bC\b|\bD\b)? -> Optional credit/debit indicator after the amount
+    pattern = r"(\d{2}\s*[./-]\s*\d{2}\s*[./-]\s*\d{2,4})\s+(.*?)\s+(-?[\d,]+\.\d{2})\s*(CR|DR|CR/|DR/|\bC\b|\bD\b)?"
     
     matches = re.finditer(pattern, text, re.DOTALL | re.IGNORECASE)
 
@@ -52,6 +53,11 @@ def extract_transactions(text: str) -> list:
         
         description = match.group(2).strip()
         description = re.sub(r"\s+", " ", description)  # Flatten multi-line spacing
+        
+        # Append the credit/debit indicator (group 4) to description if present
+        indicator = match.group(4)
+        if indicator:
+            description = f"{description} {indicator.strip().upper()}"
         
         amount_str = match.group(3).replace(",", "")
 
@@ -89,15 +95,19 @@ def extract_transactions(text: str) -> list:
                 for offset in [1, 2]:
                     if i + offset < len(lines):
                         next_line = lines[i + offset].strip()
-                        amt_match = re.match(r"^(-?[\d,]+\.\d{2})$", next_line)
+                        amt_match = re.match(r"^(-?[\d,]+\.\d{2})\s*(CR|DR|CR/|DR/|\bC\b|\bD\b)?$", next_line, re.IGNORECASE)
                         if amt_match:
                             try:
                                 amt = abs(float(amt_match.group(1).replace(",", "")))
+                                indicator = amt_match.group(2)
+                                final_desc = desc
+                                if indicator:
+                                    final_desc = f"{desc} {indicator.strip().upper()}"
                                 transactions.append({
                                     "date": date_obj,
-                                    "description": desc,
+                                    "description": final_desc,
                                     "amount": amt,
-                                    "category": categorize_transaction(desc),
+                                    "category": categorize_transaction(final_desc),
                                 })
                                 break
                             except ValueError:

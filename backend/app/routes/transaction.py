@@ -5,7 +5,7 @@ from typing import Optional
 
 from app.database import SessionLocal
 from app.models import Transaction, User, Account
-from app.schemas import TransactionCreate, TransactionUpdate
+from app.schemas import TransactionCreate, TransactionUpdate, BulkTransactionIds, BulkRecategorize
 from app.services.auth import get_current_user
 from app.services.currency_service import convert_currency_logic
 
@@ -106,6 +106,53 @@ async def create_transaction(
     db.commit()
     db.refresh(new_tx)
     return new_tx
+
+
+@router.delete("/transactions/bulk")
+def bulk_delete_transactions(
+    data: BulkTransactionIds,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Deletes multiple transactions at once, reversing each one's effect
+    on its linked account (if any) exactly like a single delete would."""
+    txs = db.query(Transaction).filter(
+        Transaction.id.in_(data.ids),
+        Transaction.user_id == current_user.id
+    ).all()
+
+    for tx in txs:
+        if tx.account_id is not None:
+            account = db.query(Account).filter(
+                Account.id == tx.account_id,
+                Account.user_id == current_user.id
+            ).first()
+            if account:
+                _reverse_from_balance(account, tx.amount, tx.transaction_type)
+        db.delete(tx)
+
+    db.commit()
+    return {"deleted": len(txs)}
+
+
+@router.put("/transactions/bulk/category")
+def bulk_recategorize_transactions(
+    data: BulkRecategorize,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Sets the same category on multiple transactions at once. Doesn't
+    touch amount/account/type, so no balance recalculation is needed."""
+    txs = db.query(Transaction).filter(
+        Transaction.id.in_(data.ids),
+        Transaction.user_id == current_user.id
+    ).all()
+
+    for tx in txs:
+        tx.category = data.category
+
+    db.commit()
+    return {"updated": len(txs)}
 
 
 @router.put("/transactions/{tx_id}")

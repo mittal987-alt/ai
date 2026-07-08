@@ -4,8 +4,10 @@ from datetime import date
 import pdfplumber
 import tempfile
 import os
+import re
 import numpy as np
 import easyocr
+from PIL import Image
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter  # Added for password handling
 
@@ -167,7 +169,19 @@ async def upload_statement(
 
             transaction_type = "expense"
             desc = tx["description"].upper()
-            if any(k in desc for k in ["/CR/", "SALARY", "CREDIT", "DEPOSIT"]):
+            
+            # Robust check for credit/deposit/income indicators
+            is_income = (
+                any(k in desc for k in ["SALARY", "CREDIT", "DEPOSIT", "INTEREST", "REFUND", "DIVIDEND"]) or
+                "/CR/" in desc or
+                desc.endswith("/CR") or
+                desc.startswith("CR/") or
+                re.search(r"\bCR\b", desc) is not None or
+                re.search(r"\b(NEFT|IMPS|RTGS|UPI|CHG|INT)?CR\b", desc) is not None or
+                re.search(r"\b(NEFT|IMPS|RTGS|UPI|CHG|INT)?CR-", desc) is not None
+            )
+            
+            if is_income:
                 transaction_type = "income"
 
             transaction = Transaction(
@@ -200,6 +214,202 @@ async def upload_statement(
     except Exception as e:
         db.rollback()
         return {"success": False, "message": f"Server Error: {str(e)}"}
+
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+#  Receipt photo scan helpers
+# ---------------------------------------------------------------------------
+
+# Keywords that suggest a "grand total" line (highest priority)
+_TOTAL_LABELS = re.compile(
+    r"(grand\s*total|total\s*amount|net\s*amount|amount\s*payable|total\s*payable"
+    r"|total\s*due|balance\s*due|subtotal|total)",
+    re.IGNORECASE,
+)
+
+# Match currency amounts: optional ₹/Rs., digits, optional comma-separated groups, optional decimal
+_AMOUNT_PATTERN = re.compile(r"(?:₹|Rs\.?\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)")
+
+# Common date formats found on Indian receipts
+_DATE_PATTERNS = [
+    re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b"),   # DD/MM/YY or MM/DD/YYYY
+    re.compile(r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{2,4})\b", re.IGNORECASE),
+    re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2}),?\s+(\d{4})\b", re.IGNORECASE),
+]
+
+_MONTH_MAP = {m: i + 1 for i, m in enumerate(["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"])}
+
+# Keyword → category mapping (checked against description in order)
+_CATEGORY_RULES = [
+    (re.compile(r"zomato|swiggy|cafe|restaurant|hotel|dhaba|food|pizza|burger|bakery|bake|biryani", re.I), "Food"),
+    (re.compile(r"amazon|flipkart|myntra|ajio|nykaa|mall|mart|shop|store|supermarket|big\s*bazaar|reliance\s*smart", re.I), "Shopping"),
+    (re.compile(r"uber|ola|rapido|cab|taxi|metro|irctc|railway|bus|flight|airline|redbus", re.I), "Travel"),
+    (re.compile(r"fuel|petrol|diesel|hp|bharat\s*petroleum|iocl|essar|reliance\s*petrol", re.I), "Fuel"),
+    (re.compile(r"netflix|spotify|amazon\s*prime|hotstar|disney|jio\s*cinema|youtube\s*premium|apple", re.I), "Subscription"),
+    (re.compile(r"airtel|jio|bsnl|vodafone|vi\s*mobile|recharge|broadband|internet|wifi", re.I), "Utilities"),
+    (re.compile(r"rent|maintenance|society|housing|property", re.I), "Rent"),
+    (re.compile(r"doctor|hospital|clinic|pharmacy|chemist|medic|health|diagnostic|lab\s*test", re.I), "Others"),
+]
+
+
+def parse_receipt_fields(ocr_text: str) -> dict:
+    """
+    Given raw OCR text from a receipt, heuristically extract:
+      - amount  (float | None)  — the most prominent "total" figure
+      - description (str | None) — likely merchant / store name
+      - date (str | None)       — ISO date YYYY-MM-DD if found
+      - category (str)          — best-guess category label
+    """
+    lines = [ln.strip() for ln in ocr_text.splitlines() if ln.strip()]
+
+    # ---- Amount: prefer lines that contain a "total" keyword ----
+    amount: float | None = None
+    for line in lines:
+        if _TOTAL_LABELS.search(line):
+            nums = _AMOUNT_PATTERN.findall(line)
+            if nums:
+                try:
+                    candidate = float(nums[-1].replace(",", ""))
+                    if amount is None or candidate > amount:
+                        amount = candidate
+                except ValueError:
+                    pass
+
+    # Fallback: largest number in the whole text (likely the total)
+    if amount is None:
+        all_nums = _AMOUNT_PATTERN.findall(ocr_text)
+        parsed = []
+        for n in all_nums:
+            try:
+                parsed.append(float(n.replace(",", "")))
+            except ValueError:
+                pass
+        if parsed:
+            amount = max(parsed)
+
+    # ---- Description: first non-trivial line that isn't a date or pure number ----
+    description: str | None = None
+    for line in lines[:6]:  # Merchant name is almost always in first 6 lines
+        # Skip lines that look like pure amounts, dates, or very short tokens
+        if _AMOUNT_PATTERN.fullmatch(line.replace(",", "")):
+            continue
+        if any(p.search(line) for p in _DATE_PATTERNS):
+            continue
+        if len(line) < 3:
+            continue
+        # Skip lines that are ALL caps abbreviations / tax labels
+        if re.fullmatch(r"[A-Z0-9\s/\-:]+", line) and len(line) < 5:
+            continue
+        description = line[:80]  # cap length
+        break
+
+    # ---- Date ----
+    receipt_date: str | None = None
+    for line in lines:
+        for pat in _DATE_PATTERNS:
+            m = pat.search(line)
+            if not m:
+                continue
+            groups = m.groups()
+            try:
+                if len(groups) == 3:
+                    g0, g1, g2 = groups
+                    # Check if g1 is a month name
+                    if isinstance(g1, str) and g1.lower()[:3] in _MONTH_MAP:
+                        day, month, year = int(g0), _MONTH_MAP[g1.lower()[:3]], int(g2)
+                    elif isinstance(g0, str) and g0.lower()[:3] in _MONTH_MAP:
+                        month, day, year = _MONTH_MAP[g0.lower()[:3]], int(g1), int(g2)
+                    else:
+                        # Assume DD/MM/YYYY (Indian format)
+                        day, month, year = int(g0), int(g1), int(g2)
+                    if year < 100:
+                        year += 2000
+                    if 1 <= month <= 12 and 1 <= day <= 31 and 2000 <= year <= 2099:
+                        receipt_date = f"{year:04d}-{month:02d}-{day:02d}"
+                        break
+            except (ValueError, TypeError):
+                pass
+        if receipt_date:
+            break
+
+    # ---- Category ----
+    haystack = (description or "") + " " + ocr_text[:300]
+    category = "Others"
+    for pattern, label in _CATEGORY_RULES:
+        if pattern.search(haystack):
+            category = label
+            break
+
+    return {
+        "amount": amount,
+        "description": description,
+        "date": receipt_date or date.today().isoformat(),
+        "category": category,
+    }
+
+
+@router.post("/scan-receipt")
+async def scan_receipt(
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    OCR a receipt photo and return extracted fields for the Add Transaction
+    modal. Nothing is written to the database — the caller is expected to
+    confirm and save via the normal POST /transactions endpoint.
+    """
+    # Validate that it's an image file
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif",
+                     "image/bmp", "image/tiff", "image/heic"}
+    content_type = (image.content_type or "").lower()
+    filename_lower = (image.filename or "").lower()
+    is_image = content_type in allowed_types or any(
+        filename_lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".heic")
+    )
+    if not is_image:
+        return {"success": False, "message": "Please upload an image file (JPEG, PNG, WebP, etc.)"}
+
+    contents = await image.read()
+    if not contents:
+        return {"success": False, "message": "The uploaded file is empty."}
+
+    tmp_path = None
+    try:
+        suffix = os.path.splitext(image.filename or ".jpg")[1] or ".jpg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        # Convert to RGB numpy array (handles HEIC and other exotic formats via PIL)
+        pil_image = Image.open(tmp_path).convert("RGB")
+        img_array = np.array(pil_image)
+
+        # Run OCR — detail=0 gives plain strings, paragraph=True merges lines
+        ocr_results = reader.readtext(img_array, detail=1, paragraph=False)
+        if not ocr_results:
+            return {"success": False, "message": "Could not extract any text from the image. Please try a clearer photo."}
+
+        # Reconstruct plain text preserving vertical order (sort by Y centroid)
+        ocr_results.sort(key=lambda r: r[0][0][1])  # sort by top-left Y coordinate
+        raw_text = "\n".join(r[1] for r in ocr_results)
+
+        fields = parse_receipt_fields(raw_text)
+
+        return {
+            "success": True,
+            "description": fields["description"],
+            "amount": fields["amount"],
+            "date": fields["date"],
+            "category": fields["category"],
+            "raw_text_sample": raw_text[:400],
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"Scan failed: {str(e)}"}
 
     finally:
         if tmp_path and os.path.exists(tmp_path):

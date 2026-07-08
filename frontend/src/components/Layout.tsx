@@ -165,6 +165,12 @@ const Layout: React.FC = () => {
     setTxDate,
     txAccountId,
     setTxAccountId,
+    txCurrency,
+    setTxCurrency,
+    statementCurrency,
+    setStatementCurrency,
+    supportedCurrencies,
+    categories,
     handleTxSubmit,
     toasts,
     confirmState,
@@ -197,11 +203,19 @@ const Layout: React.FC = () => {
     reminderFrequency,
     setReminderFrequency,
     handleReminderSubmit,
+    showReceiptScanModal,
+    setShowReceiptScanModal,
+    isScanning,
+    scanReceiptAndPrefill,
   } = useFinance();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  // Local state for receipt scan preview
+  const [selectedReceipt, setSelectedReceipt] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
 
   useBillNotifications(reminders);
 
@@ -348,10 +362,110 @@ const Layout: React.FC = () => {
               </button>
 
               <div className="flex flex-wrap items-center gap-3 ml-auto">
+                {/* Scan receipt — compact button that opens a popover */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setShowReceiptScanModal(v => !v);
+                      setShowUploadPanel(false);
+                    }}
+                    className="relative flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs font-bold py-2.5 px-3.5 rounded-lg transition-all cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.25} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                    </svg>
+                    <span className="hidden sm:inline">Scan receipt</span>
+                    {selectedReceipt && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-teal-600"></span>}
+                  </button>
+
+                  {showReceiptScanModal && (
+                    <div className="absolute right-0 top-12 w-80 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl shadow-xl z-50 p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <p className="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Scan receipt photo</p>
+                        <button
+                          onClick={() => setShowReceiptScanModal(false)}
+                          className="text-stone-400 hover:text-stone-600 cursor-pointer text-lg leading-none bg-transparent border-none"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-950 p-1.5 rounded-lg border border-stone-200 dark:border-stone-800">
+                          <input
+                            id="receipt-upload-input"
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) {
+                                const file = e.target.files[0];
+                                setSelectedReceipt(file);
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setReceiptPreview(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="text-xs text-stone-600 dark:text-stone-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-white dark:file:bg-stone-800 file:text-teal-700 dark:file:text-teal-400 hover:file:bg-teal-50 cursor-pointer flex-1 min-w-0"
+                          />
+                        </div>
+
+                        {receiptPreview && (
+                          <div className="flex flex-col items-center justify-center border border-stone-150 dark:border-stone-800 rounded-lg p-2 bg-stone-50 dark:bg-stone-950">
+                            <img
+                              src={receiptPreview}
+                              alt="Receipt Preview"
+                              className="max-h-36 rounded-md object-contain"
+                            />
+                            <button
+                              onClick={() => {
+                                setSelectedReceipt(null);
+                                setReceiptPreview(null);
+                                const fileInput = document.getElementById("receipt-upload-input") as HTMLInputElement;
+                                if (fileInput) fileInput.value = "";
+                              }}
+                              className="text-[10px] text-coral-600 hover:underline mt-2 font-bold cursor-pointer bg-transparent border-none"
+                            >
+                              Remove photo
+                            </button>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            if (selectedReceipt) {
+                              scanReceiptAndPrefill(selectedReceipt).then(() => {
+                                setSelectedReceipt(null);
+                                setReceiptPreview(null);
+                              });
+                            }
+                          }}
+                          disabled={isScanning || !selectedReceipt}
+                          className="w-full bg-teal-700 hover:bg-teal-800 disabled:bg-stone-300 dark:disabled:bg-stone-800 text-white text-xs font-bold py-2.5 rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                        >
+                          {isScanning ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                              Reading receipt…
+                            </>
+                          ) : (
+                            "Scan receipt"
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Upload statement — compact button that opens a popover */}
                 <div className="relative">
                   <button
-                    onClick={() => setShowUploadPanel(v => !v)}
+                    onClick={() => {
+                      setShowUploadPanel(v => !v);
+                      setShowReceiptScanModal(false);
+                    }}
                     className="relative flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs font-bold py-2.5 px-3.5 rounded-lg transition-all cursor-pointer"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.25} stroke="currentColor" className="w-4 h-4">
@@ -376,7 +490,17 @@ const Layout: React.FC = () => {
                           className="text-xs text-stone-600 dark:text-stone-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-white dark:file:bg-stone-800 file:text-teal-700 dark:file:text-teal-400 hover:file:bg-teal-50 cursor-pointer flex-1 min-w-0"
                         />
                       </div>
-                      {file && <p className="text-[11px] text-stone-450 dark:text-stone-500 mb-3 truncate">Selected: {file.name}</p>}
+                      {file && <p className="text-[11px] text-stone-450 dark:text-stone-500 mb-2 truncate">Selected: {file.name}</p>}
+                      <div className="mb-3">
+                        <label className="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Statement currency</label>
+                        <select
+                          value={statementCurrency}
+                          onChange={(e) => setStatementCurrency(e.target.value)}
+                          className="w-full text-xs bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-md px-2 py-1.5 text-stone-700 dark:text-stone-200 cursor-pointer"
+                        >
+                          {supportedCurrencies.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                        </select>
+                      </div>
                       <button
                         onClick={() => uploadStatement()}
                         disabled={isUploading || !file}
@@ -562,7 +686,7 @@ const Layout: React.FC = () => {
               <Field label="Amount (₹)"><input type="number" required value={subAmount} onChange={(e) => setSubAmount(e.target.value)} placeholder="649.00" className="modal-input" /></Field>
               <Field label="Category">
                 <select value={subCategory} onChange={(e) => setSubCategory(e.target.value)} className="modal-input cursor-pointer">
-                  {["Entertainment","Utilities","Rent","Shopping","Others"].map(c => <option key={c}>{c}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </Field>
             </div>
@@ -584,14 +708,24 @@ const Layout: React.FC = () => {
         <Modal onClose={() => setShowTxModal(false)} title={txModalMode === "add" ? "Add transaction" : "Edit transaction"} desc="Keep track of your income and day-to-day spending">
           <form onSubmit={handleTxSubmit} className="space-y-4">
             <Field label="Description"><input type="text" required value={txDescription} onChange={(e) => setTxDescription(e.target.value)} placeholder="e.g. Swiggy order" className="modal-input" /></Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Amount (₹)"><input type="number" step="0.01" required value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="250.00" className="modal-input" /></Field>
+            <div className="grid grid-cols-3 gap-4">
+              <Field label="Currency">
+                <select value={txCurrency} onChange={(e) => setTxCurrency(e.target.value)} className="modal-input cursor-pointer">
+                  {supportedCurrencies.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                </select>
+              </Field>
+              <Field label={`Amount (${supportedCurrencies.find(c => c.code === txCurrency)?.symbol || "₹"})`}>
+                <input type="number" step="0.01" required value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="250.00" className="modal-input" />
+              </Field>
               <Field label="Date"><input type="date" required value={txDate} onChange={(e) => setTxDate(e.target.value)} className="modal-input" /></Field>
             </div>
+            {txCurrency !== "INR" && (
+              <p className="text-[11px] text-stone-450 dark:text-stone-500 -mt-2">Converted to ₹ automatically when saved.</p>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <Field label="Category">
                 <select value={txCategory} onChange={(e) => setTxCategory(e.target.value)} className="modal-input cursor-pointer">
-                  {["Shopping","Food","Travel","Fuel","UPI","Cash","Income","Others"].map(c => <option key={c}>{c}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </Field>
               <Field label="Type">
@@ -645,7 +779,7 @@ const Layout: React.FC = () => {
               <Field label="Amount (₹)"><input type="number" required value={reminderAmount} onChange={e => setReminderAmount(e.target.value)} placeholder="999" className="modal-input" /></Field>
               <Field label="Category">
                 <select value={reminderCategory} onChange={e => setReminderCategory(e.target.value)} className="modal-input cursor-pointer">
-                  {["Rent","Utilities","Credit Card","Others"].map(c => <option key={c}>{c}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </Field>
             </div>

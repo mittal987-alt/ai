@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.schemas import UserCreate, UserLogin, ChangePasswordRequest
 from app.models import (
@@ -13,6 +14,9 @@ from app.services.auth import get_current_user
 
 from passlib.context import CryptContext
 from jose import jwt, JWTError
+
+class UpdateNameRequest(BaseModel):
+    name: str
 
 router = APIRouter()
 
@@ -120,31 +124,39 @@ def login(
 # -------------------------
 # PROFILE
 @router.get("/profile")
-def profile(authorization: str = Header(None)):
-
+def profile(
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
     if authorization is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Authorization token missing"
-        )
+        raise HTTPException(status_code=401, detail="Authorization token missing")
 
-    token = authorization.replace("Bearer ", "")
+    token_str = authorization.replace("Bearer ", "")
 
     try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
+        payload = jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid or expired token"
-        )
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    return {
-        "email": payload["sub"]
-    }
+    email = payload["sub"]
+    user = db.query(User).filter(User.email == email).first()
+    name = user.name if user else ""
+
+    return {"email": email, "name": name}
+
+
+# -------------------------
+# UPDATE NAME
+# -------------------------
+@router.put("/profile/name")
+def update_name(
+    data: UpdateNameRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    current_user.name = data.name.strip()
+    db.commit()
+    return {"message": "Name updated successfully", "name": current_user.name}
 
 
 # -------------------------
