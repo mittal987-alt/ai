@@ -43,6 +43,10 @@ from app.routes.categories import router as categories_router
 from app.routes.backup import router as backup_router
 # Receipt photo scan
 from app.routes.receipt import router as receipt_router
+# Receipt image storage
+from app.routes.receipt_store import router as receipt_store_router
+# Gamified challenges
+from app.routes.challenges import router as challenges_router
 
 # Clean up misspelled reciept.py file if it exists
 import os
@@ -64,6 +68,7 @@ try:
         conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'INR'"))
         conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS original_amount DOUBLE PRECISION"))
         conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS exchange_rate DOUBLE PRECISION DEFAULT 1.0"))
+        conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_image_url VARCHAR(500)"))
         conn.commit()
 except Exception as e:
     print(f"Warning: Could not alter database tables: {e}")
@@ -135,6 +140,10 @@ app.include_router(categories_router)
 app.include_router(backup_router)
 # Receipt photo scan
 app.include_router(receipt_router)
+# Receipt image storage
+app.include_router(receipt_store_router)
+# Gamified challenges
+app.include_router(challenges_router)
 
 
 @app.on_event("startup")

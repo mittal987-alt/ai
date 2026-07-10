@@ -26,6 +26,7 @@ const NAV_LINKS: { to: string; label: string; badge?: number; end?: boolean }[] 
   { to: "/tax", label: "Tax estimator" },
   { to: "/planner", label: "Budget planner" },
   { to: "/achievements", label: "Achievements" },
+  { to: "/challenges", label: "Challenges 🏆" },
   { to: "/settings", label: "Settings" }
 ];
 
@@ -239,9 +240,7 @@ const Layout: React.FC = () => {
       <div className="flex">
         {/* ============================== SIDEBAR ============================== */}
         <aside
-          className={`fixed lg:sticky top-0 z-30 h-screen w-72 shrink-0 bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 flex flex-col transition-transform duration-200 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          }`}
+          className={`fixed lg:sticky top-0 z-30 h-screen w-72 shrink-0 bg-white/80 dark:bg-stone-900/60 backdrop-blur-xl border-r border-stone-200 dark:border-stone-700/50 flex flex-col transition-transform duration-300 ${
         >
           <Link to="/" className="flex items-center gap-3 px-6 py-6 border-b border-stone-200 dark:border-stone-800 decoration-transparent">
             <div className="w-9 h-9 rounded-md bg-teal-700 dark:bg-teal-600 text-white flex items-center justify-center font-serif font-bold text-lg shrink-0">₹</div>
@@ -344,7 +343,7 @@ const Layout: React.FC = () => {
             ) : (
               <button
                 onClick={() => { setAuthMode("login"); setAuthError(""); setShowAuthModal(true); }}
-                className="w-full bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold py-2.5 rounded-md transition-all cursor-pointer border-none"
+                className="w-full bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white text-xs font-bold py-2.5 rounded-md transition-all duration-300 transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(15,110,86,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] cursor-pointer border-none"
               >
                 Sign in
               </button>
@@ -356,7 +355,7 @@ const Layout: React.FC = () => {
 
         {/* ============================== MAIN ============================== */}
         <main className="flex-1 min-w-0">
-          <header className="sticky top-0 z-10 bg-stone-50/90 dark:bg-stone-950/90 backdrop-blur-sm border-b border-stone-200 dark:border-stone-800 px-5 sm:px-8 py-4">
+          <header className="sticky top-0 z-10 bg-stone-50/80 dark:bg-stone-950/70 backdrop-blur-xl border-b border-stone-200 dark:border-stone-700/50 shadow-sm px-5 sm:px-8 py-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-stone-500 cursor-pointer bg-transparent border-none">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
@@ -436,18 +435,18 @@ const Layout: React.FC = () => {
                           </div>
                         )}
 
-                        <button
-                          onClick={() => {
-                            if (selectedReceipt) {
-                              scanReceiptAndPrefill(selectedReceipt).then(() => {
-                                setSelectedReceipt(null);
-                                setReceiptPreview(null);
-                              });
-                            }
-                          }}
-                          disabled={isScanning || !selectedReceipt}
-                          className="w-full bg-teal-700 hover:bg-teal-800 disabled:bg-stone-300 dark:disabled:bg-stone-800 text-white text-xs font-bold py-2.5 rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
-                        >
+                          <button
+                            onClick={() => {
+                              if (selectedReceipt) {
+                                scanReceiptAndPrefill(selectedReceipt).then(() => {
+                                  setSelectedReceipt(null);
+                                  setReceiptPreview(null);
+                                });
+                              }
+                            }}
+                            disabled={isScanning || !selectedReceipt}
+                            className="w-full bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 disabled:from-stone-400 disabled:to-stone-400 dark:disabled:from-stone-800 dark:disabled:to-stone-800 text-white text-xs font-bold py-2.5 rounded-md transition-all duration-300 transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(15,110,86,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                          >
                           {isScanning ? (
                             <>
                               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -507,7 +506,7 @@ const Layout: React.FC = () => {
                       <button
                         onClick={() => uploadStatement()}
                         disabled={isUploading || !file}
-                        className="w-full bg-teal-700 hover:bg-teal-800 disabled:bg-stone-300 dark:disabled:bg-stone-800 text-white text-xs font-bold py-2.5 rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                        className="w-full bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 disabled:from-stone-400 disabled:to-stone-400 dark:disabled:from-stone-800 dark:disabled:to-stone-800 text-white text-xs font-bold py-2.5 rounded-md transition-all duration-300 transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(15,110,86,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] flex items-center justify-center gap-1.5 cursor-pointer border-none"
                       >
                         {isUploading ? (
                           <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Parsing…</>
@@ -619,7 +618,7 @@ const Layout: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => { setAuthMode("login"); setAuthError(""); setShowAuthModal(true); }}
-                    className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition-all cursor-pointer border-none"
+                    className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white text-xs font-bold py-2.5 px-4 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(15,110,86,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] cursor-pointer border-none"
                   >
                     Sign in
                   </button>
@@ -762,7 +761,7 @@ const Layout: React.FC = () => {
             )}
             <Field label="Email address"><input type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="name@example.com" className="modal-input" /></Field>
             <Field label="Password"><input type="password" required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="••••••••" className="modal-input" /></Field>
-            <button type="submit" disabled={isLoadingAuth} className="w-full bg-teal-700 hover:bg-teal-800 disabled:bg-teal-400 text-white font-bold py-3 rounded-lg transition-all text-sm mt-2 flex items-center justify-center cursor-pointer border-none">
+            <button type="submit" disabled={isLoadingAuth} className="w-full bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 disabled:from-teal-400 disabled:to-teal-400 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(15,110,86,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] text-sm mt-2 flex items-center justify-center cursor-pointer border-none">
               {isLoadingAuth ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : authMode === "login" ? "Sign in" : "Register account"}
             </button>
           </form>
@@ -814,52 +813,128 @@ const Layout: React.FC = () => {
         </Modal>
       )}
 
-      {/* ============================== FLOATING CHATBOT ============================== */}
+      {/* ============================== FLOATING AI COPILOT ============================== */}
       {userEmail && (
         <div className="fixed bottom-6 right-6 z-40">
-          <button onClick={() => setChatOpen(!chatOpen)} className="bg-teal-700 hover:bg-teal-800 text-white p-4 rounded-full shadow-lg transition-all hover:scale-105 duration-200 flex items-center justify-center cursor-pointer border-none">
-            {chatOpen ? (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.625.625 0 1 1-1.25 0 .625.625 0 0 1 1.25 0Zm4.5 0a.625.625 0 1 1-1.25 0 .625.625 0 0 1 1.25 0Zm4.5 0a.625.625 0 1 1-1.25 0 .625.625 0 0 1 1.25 0Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-              </svg>
-            )}
-          </button>
-
+          {/* Chat Panel */}
           {chatOpen && (
-            <div className="absolute bottom-16 right-0 w-80 md:w-96 h-[450px] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-              <div className="bg-teal-800 p-4 text-white flex justify-between items-center">
-                <span className="font-serif font-bold text-sm">Finance AI coach</span>
-                <button onClick={() => setChatOpen(false)} className="text-white/80 hover:text-white cursor-pointer bg-transparent border-none">✕</button>
+            <div className="absolute bottom-20 right-0 w-80 md:w-[420px] h-[520px] bg-white dark:bg-stone-900/95 backdrop-blur-xl border border-stone-200 dark:border-stone-700/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{boxShadow:"0 25px 60px rgba(0,0,0,0.25), 0 0 30px rgba(15,110,86,0.15)"}}>
+              {/* Header */}
+              <div className="bg-gradient-to-r from-teal-700 to-teal-600 p-4 text-white flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold shrink-0">🤖</div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-serif font-bold text-sm leading-tight">Finance AI Copilot</p>
+                  <p className="text-[10px] text-white/70">Powered by Gemini · Your financial data is context</p>
+                </div>
+                <button onClick={() => setChatOpen(false)} className="text-white/70 hover:text-white cursor-pointer bg-transparent border-none shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                </button>
               </div>
-              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-stone-50/60 dark:bg-stone-950/30 text-xs">
+
+              {/* Quick Ask Chips — shown only when chat is empty */}
+              {chatMessages.length === 0 && (
+                <div className="p-3 border-b border-stone-100 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-950/30">
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Quick ask</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "How's my spending this month?",
+                      "Am I on budget?",
+                      "What's my biggest expense?",
+                      "How's my savings rate?",
+                      "Any budget alerts?",
+                    ].map(chip => (
+                      <button
+                        key={chip}
+                        onClick={() => { setChatInput(chip); }}
+                        className="text-[10px] font-semibold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 rounded-full px-2.5 py-1 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-all cursor-pointer"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Messages */}
+              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-stone-50/40 dark:bg-stone-950/20 text-xs">
+                {chatMessages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full text-center gap-2 opacity-60">
+                    <span className="text-3xl">💬</span>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Ask me anything about<br/>your finances!</p>
+                  </div>
+                )}
                 {chatMessages.map((msg, index) => (
                   <div key={index} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] rounded-xl p-3 ${msg.sender === "user" ? "bg-teal-700 text-white rounded-tr-none" : "bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-800 text-stone-800 dark:text-stone-200 rounded-tl-none"}`}>
-                      <p className="leading-relaxed whitespace-pre-line">{msg.text}</p>
+                    {msg.sender !== "user" && (
+                      <div className="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center text-[10px] shrink-0 mr-2 mt-0.5">🤖</div>
+                    )}
+                    <div className={`max-w-[82%] rounded-2xl p-3 ${msg.sender === "user"
+                      ? "bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-tr-none shadow-md"
+                      : "bg-white dark:bg-stone-800/80 border border-stone-100 dark:border-stone-700/50 text-stone-800 dark:text-stone-200 rounded-tl-none shadow-sm"
+                    }`}>
+                      <p className="leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{
+                        __html: msg.text
+                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/\n•/g, '<br/>•')
+                          .replace(/\n-/g, '<br/>-')
+                      }} />
                     </div>
                   </div>
                 ))}
                 {chatLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-800 rounded-xl rounded-tl-none p-3 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce"></span>
-                      <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce delay-75"></span>
-                      <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce delay-150"></span>
+                    <div className="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center text-[10px] shrink-0 mr-2">🤖</div>
+                    <div className="bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700 rounded-2xl rounded-tl-none p-3 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce"></span>
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{animationDelay:"0.15s"}}></span>
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{animationDelay:"0.3s"}}></span>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Input */}
               <form onSubmit={sendChatMessage} className="p-3 border-t border-stone-150 dark:border-stone-800 bg-white dark:bg-stone-900 flex gap-2">
-                <input type="text" required value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask the coach…" className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-100" />
-                <button type="submit" disabled={chatLoading} className="bg-teal-700 hover:bg-teal-800 disabled:bg-teal-400 text-white px-3.5 rounded-lg cursor-pointer border-none">→</button>
+                <input
+                  type="text"
+                  required
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Ask the AI Copilot…"
+                  className="flex-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-teal-500 text-stone-800 dark:text-stone-100 placeholder:text-stone-400"
+                />
+                <button
+                  type="submit"
+                  disabled={chatLoading}
+                  className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 disabled:from-teal-400 disabled:to-teal-400 text-white px-4 rounded-xl cursor-pointer border-none transition-all duration-200 font-bold text-sm shadow-[0_0_10px_rgba(15,110,86,0.3)]"
+                >
+                  ↑
+                </button>
               </form>
             </div>
           )}
+
+          {/* Toggle Button */}
+          <button
+            onClick={() => setChatOpen(!chatOpen)}
+            title="AI Financial Copilot"
+            className={`relative bg-gradient-to-br from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white p-4 rounded-full shadow-[0_0_20px_rgba(15,110,86,0.5)] hover:shadow-[0_0_30px_rgba(20,184,166,0.6)] transition-all duration-300 ${chatOpen ? "rotate-0 scale-95" : "hover:scale-105"} flex items-center justify-center cursor-pointer border-none`}
+          >
+            {chatOpen ? (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                </svg>
+                {/* Pulse ring */}
+                <span className="absolute inset-0 rounded-full animate-ping bg-teal-500 opacity-20"></span>
+              </>
+            )}
+          </button>
         </div>
       )}
+
 
       {/* ============================== TOASTS ============================== */}
       {toasts.length > 0 && (
@@ -951,7 +1026,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function SubmitButton({ children }: { children: React.ReactNode }) {
   return (
-    <button type="submit" className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 rounded-lg transition-all text-sm mt-2 cursor-pointer border-none">
+    <button type="submit" className="w-full bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(15,110,86,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] text-sm mt-2 cursor-pointer border-none">
       {children}
     </button>
   );

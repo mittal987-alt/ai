@@ -13,6 +13,7 @@ import {
   Legend
 } from "recharts";
 import { useFinance } from "../context/FinanceContext";
+import CurrencyWidget from "../components/CurrencyWidget";
 
 const Overview: React.FC = () => {
   const {
@@ -104,7 +105,7 @@ const Overview: React.FC = () => {
         <StatCard label="Expenses" value={data.expense} icon="down" accent="coral" sub="Total spending" />
         <StatCard label="Net savings" value={data.savings} icon="check" accent="blue" sub="Remaining balance" />
         <StatCard label="Transactions" value={transactions.length} icon="list" accent="gold" sub="Processed records" isCount />
-        <div className="bg-teal-800 dark:bg-teal-950 text-white rounded-xl p-5">
+        <div className="bg-teal-800 dark:bg-teal-950 text-white rounded-xl p-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300">
           <div className="flex justify-between items-start mb-3">
             <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">Net worth</span>
             <div className="bg-white/15 text-white p-2 rounded-lg">
@@ -120,7 +121,7 @@ const Overview: React.FC = () => {
 
       {/* Financial Health Score Widget */}
       {userEmail && healthScore && (
-        <div className="bg-teal-800 dark:bg-teal-950 rounded-2xl p-6 sm:p-7 mb-7 text-white">
+        <div className="bg-teal-800 dark:bg-teal-950 rounded-2xl p-6 sm:p-7 mb-7 text-white shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="flex-shrink-0 flex flex-col items-center">
               <div className="relative w-28 h-28">
@@ -161,6 +162,11 @@ const Overview: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Live Currency Rates Widget */}
+      <div className="mb-7">
+        <CurrencyWidget />
+      </div>
 
       {/* Monthly Trend Area Chart */}
       {userEmail && trendsData && trendsData.length > 0 && (
@@ -673,7 +679,7 @@ function StatCard({ label, value, icon, accent, sub, isCount }: { label: string;
     list: <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.007 8.25H3.75v-.008h.008V15Zm-.008 3h.008v.008H3.75V18Z" />
   };
   return (
-    <div className={`bg-white dark:bg-stone-900 rounded-xl border border-stone-150 dark:border-stone-800 border-l-4 ${c.border} shadow-sm p-5`}>
+    <div className={`bg-white dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-stone-150 dark:border-stone-700/50 border-l-4 ${c.border} shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-5`}>
       <div className="flex justify-between items-start mb-3">
         <span className="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider">{label}</span>
         <div className={`${c.bg} ${c.text} p-2 rounded-lg`}>

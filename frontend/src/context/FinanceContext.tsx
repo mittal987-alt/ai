@@ -332,7 +332,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [filterType, setFilterType] = useState("All");
 
   // Theme state
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   // States
   const [trendsData, setTrendsData] = useState<any[]>([]);

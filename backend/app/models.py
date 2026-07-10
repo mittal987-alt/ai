@@ -30,6 +30,7 @@ class Transaction(Base):
 
     category = Column(String(100))
     transaction_type = Column(String(20))  # income/expense
+    receipt_image_url = Column(String(500), nullable=True)
 
     created_at = Column(
         DateTime(timezone=True),
@@ -217,3 +218,16 @@ class DailyBrief(Base):
     alerts_warning_count = Column(Integer, default=0)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Challenge(Base):
+    """Gamified savings/spending challenges."""
+    __tablename__ = "challenges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    challenge_type = Column(String(50))   # 52_week | no_spend_week | save_10_pct | 100_day_streak
+    started_at = Column(Date)
+    current_value = Column(Float, default=0.0)
+    target_value = Column(Float, default=0.0)
+    is_complete = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

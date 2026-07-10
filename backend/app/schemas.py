@@ -25,6 +25,7 @@ class TransactionCreate(BaseModel):
     transaction_type: str
     account_id: Optional[int] = None
     currency: Optional[str] = "INR"  # if not INR, amount is converted to INR server-side on save
+    receipt_image_url: Optional[str] = None
 
 class TransactionUpdate(BaseModel):
     transaction_date: date
@@ -34,6 +35,7 @@ class TransactionUpdate(BaseModel):
     transaction_type: str
     account_id: Optional[int] = None
     currency: Optional[str] = "INR"
+    receipt_image_url: Optional[str] = None
 
 class BulkTransactionIds(BaseModel):
     ids: List[int]

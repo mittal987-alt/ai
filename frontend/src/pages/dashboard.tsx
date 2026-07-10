@@ -80,7 +80,7 @@ function Dashboard() {
   const [filterType, setFilterType] = useState("All");
 
   // Theme state
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   // Section + sub-section navigation
   const [activeTab, setActiveTab] = useState<

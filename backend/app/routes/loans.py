@@ -227,3 +227,103 @@ def calculate_emi(principal: float, annual_rate: float, tenure_months: int):
         "total_interest": round(total_interest, 2),
         "principal": principal,
     }
+
+
+# ─── Debt Payoff Simulator (Snowball vs Avalanche) ────────────────────────────
+@router.get("/payoff-simulation")
+def payoff_simulation(
+    extra_payment: float = 0.0,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Compare Snowball (smallest balance first) vs Avalanche (highest rate first)
+    strategies for paying off all active loans with an optional extra monthly payment.
+    Returns month-by-month balance data for charting.
+    """
+    loans = db.query(Loan).filter(
+        Loan.user_id == current_user.id,
+        Loan.is_active == True,
+    ).all()
+
+    if not loans:
+        return {"months": 0, "strategies": {}}
+
+    def simulate(strategy: str):
+        # Work with mutable copies
+        debts = [
+            {
+                "name": l.name,
+                "balance": l.outstanding_amount,
+                "rate": l.interest_rate,
+                "min_payment": l.emi_amount,
+            }
+            for l in loans
+        ]
+
+        # Sort order determines which debt gets the extra payment
+        if strategy == "snowball":
+            debts.sort(key=lambda d: d["balance"])
+        else:  # avalanche
+            debts.sort(key=lambda d: d["rate"], reverse=True)
+
+        total_min = sum(d["min_payment"] for d in debts)
+        months_elapsed = 0
+        total_interest = 0.0
+        # Chart data: list of total remaining balance per month
+        balance_over_time = []
+
+        while any(d["balance"] > 0 for d in debts) and months_elapsed < 600:
+            months_elapsed += 1
+            extra_left = extra_payment
+
+            for debt in debts:
+                if debt["balance"] <= 0:
+                    continue
+                monthly_rate = debt["rate"] / 12 / 100
+                interest = round(debt["balance"] * monthly_rate, 2)
+                total_interest += interest
+
+                payment = debt["min_payment"] + extra_left
+                extra_left = 0  # extra goes to first debt in priority
+
+                if payment >= debt["balance"] + interest:
+                    # Loan paid off — redirect leftover to next
+                    extra_left = payment - (debt["balance"] + interest)
+                    debt["balance"] = 0.0
+                else:
+                    debt["balance"] = round(debt["balance"] + interest - payment, 2)
+
+            total_remaining = sum(d["balance"] for d in debts)
+            balance_over_time.append(round(total_remaining, 2))
+
+        return {
+            "months_to_payoff": months_elapsed,
+            "total_interest_paid": round(total_interest, 2),
+            "total_paid": round(
+                sum(l.outstanding_amount for l in loans) + total_interest, 2
+            ),
+            "payoff_date": (
+                __import__("datetime").date.today()
+                + __import__("datetime").timedelta(days=months_elapsed * 30)
+            ).isoformat(),
+            "balance_over_time": balance_over_time,
+        }
+
+    snowball = simulate("snowball")
+    avalanche = simulate("avalanche")
+
+    interest_saved = round(snowball["total_interest_paid"] - avalanche["total_interest_paid"], 2)
+    months_saved = snowball["months_to_payoff"] - avalanche["months_to_payoff"]
+
+    return {
+        "loan_count": len(loans),
+        "total_outstanding": round(sum(l.outstanding_amount for l in loans), 2),
+        "extra_payment": extra_payment,
+        "snowball": snowball,
+        "avalanche": avalanche,
+        "avalanche_advantage": {
+            "interest_saved": interest_saved,
+            "months_saved": months_saved,
+        },
+    }

@@ -95,7 +95,8 @@ async def create_transaction(
         exchange_rate=exchange_rate,
         category=tx_data.category,
         transaction_type=tx_data.transaction_type,
-        account_id=tx_data.account_id
+        account_id=tx_data.account_id,
+        receipt_image_url=tx_data.receipt_image_url,
     )
     db.add(new_tx)
 

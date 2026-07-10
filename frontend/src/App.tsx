@@ -17,6 +17,7 @@ import RecurringTransactions from "./pages/RecurringTransactions";
 import Investments from "./pages/Investments";
 import Loans from "./pages/Loans";
 import Settings from "./pages/settings";
+import Challenges from "./pages/Challenges";
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
           <Route path="/investments"   element={<Investments />} />
           <Route path="/loans"         element={<Loans />} />
           <Route path="/settings"      element={<Settings />} />
+          <Route path="/challenges"    element={<Challenges />} />
         </Route>
       </Routes>
     </FinanceProvider>
