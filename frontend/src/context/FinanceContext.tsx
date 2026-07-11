@@ -77,6 +77,8 @@ interface FinanceContextType {
   setTxAccountId: React.Dispatch<React.SetStateAction<string>>;
   txCurrency: string;
   setTxCurrency: React.Dispatch<React.SetStateAction<string>>;
+  txReceiptUrl: string | null;
+  setTxReceiptUrl: React.Dispatch<React.SetStateAction<string | null>>;
   statementCurrency: string;
   setStatementCurrency: React.Dispatch<React.SetStateAction<string>>;
   supportedCurrencies: { code: string; name: string; symbol: string }[];
@@ -294,6 +296,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [txDate, setTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [txAccountId, setTxAccountId] = useState("");
   const [txCurrency, setTxCurrency] = useState("INR");
+  const [txReceiptUrl, setTxReceiptUrl] = useState<string | null>(null);
   const [isScanningReceipt, setIsScanningReceipt] = useState(false);
   const [statementCurrency, setStatementCurrency] = useState("INR");
   const [categories, setCategories] = useState<{ id: number; name: string; color: string }[]>([]);
@@ -1216,6 +1219,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       const result = await res.json();
       if (result.success) {
+        // Also upload the image for storage
+        try {
+          const storeRes = await fetch("http://127.0.0.1:8000/receipts/store", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          if (storeRes.ok) {
+            const storeResult = await storeRes.json();
+            setTxReceiptUrl(storeResult.url);
+          }
+        } catch (e) {
+          console.error("Failed to store receipt image", e);
+        }
+
         setTxModalMode("add");
         setTxDescription(result.description || "");
         setTxAmount(result.amount ? String(result.amount) : "");
@@ -1248,7 +1266,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       transaction_type: txType,
       transaction_date: txDate,
       account_id: txAccountId ? parseInt(txAccountId) : null,
-      currency: txCurrency
+      currency: txCurrency,
+      receipt_image_url: txReceiptUrl,
     };
 
     const token = localStorage.getItem("token");
@@ -1277,6 +1296,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTxDate(new Date().toISOString().split("T")[0]);
         setTxAccountId("");
         setTxCurrency("INR");
+        setTxReceiptUrl(null);
         loadData();
       }
     } catch (err) {
@@ -1354,6 +1374,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTxDate(tx.transaction_date);
     setTxAccountId(tx.account_id ? String(tx.account_id) : "");
     setTxCurrency(tx.currency || "INR");
+    setTxReceiptUrl(tx.receipt_image_url || null);
     setTxModalMode("edit");
     setShowTxModal(true);
   };
@@ -1540,6 +1561,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTxAccountId,
         txCurrency,
         setTxCurrency,
+        txReceiptUrl,
+        setTxReceiptUrl,
         statementCurrency,
         setStatementCurrency,
         supportedCurrencies,

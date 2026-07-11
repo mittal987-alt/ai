@@ -240,8 +240,10 @@ const Layout: React.FC = () => {
       <div className="flex">
         {/* ============================== SIDEBAR ============================== */}
         <aside
-          className={`fixed lg:sticky top-0 z-30 h-screen w-72 shrink-0 bg-white/80 dark:bg-stone-900/60 backdrop-blur-xl border-r border-stone-200 dark:border-stone-700/50 flex flex-col transition-transform duration-300 ${
-        >
+  className={`fixed lg:sticky top-0 z-30 h-screen w-72 shrink-0 bg-white/80 dark:bg-stone-900/60 backdrop-blur-xl border-r border-stone-200 dark:border-stone-700/50 flex flex-col transition-transform duration-300 ${
+    sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+  }`}
+>
           <Link to="/" className="flex items-center gap-3 px-6 py-6 border-b border-stone-200 dark:border-stone-800 decoration-transparent">
             <div className="w-9 h-9 rounded-md bg-teal-700 dark:bg-teal-600 text-white flex items-center justify-center font-serif font-bold text-lg shrink-0">₹</div>
             <div className="min-w-0">
