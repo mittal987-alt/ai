@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine
 from app.models import Base
 
+
 # Routers
 from app.routes.auth import router as auth_router
 from app.routes.insights import router as insights_router
@@ -47,9 +48,15 @@ from app.routes.receipt import router as receipt_router
 from app.routes.receipt_store import router as receipt_store_router
 # Gamified challenges
 from app.routes.challenges import router as challenges_router
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Clean up misspelled reciept.py file if it exists
-import os
+
 try:
     reciept_path = os.path.join(os.path.dirname(__file__), "routes", "reciept.py")
     if os.path.exists(reciept_path):
