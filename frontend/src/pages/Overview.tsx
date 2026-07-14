@@ -13,7 +13,6 @@ import {
   Legend
 } from "recharts";
 import { useFinance } from "../context/FinanceContext";
-import CurrencyWidget from "../components/CurrencyWidget";
 
 const Overview: React.FC = () => {
   const {
@@ -59,12 +58,16 @@ const Overview: React.FC = () => {
     handleBulkRecategorize,
     scanReceipt,
     isScanningReceipt,
+    trash,
+    handleRestoreTransaction,
+    handlePurgeTrash,
     filteredTransactions,
     categories
   } = useFinance();
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkCategory, setBulkCategory] = useState("");
+  const [showTrashPanel, setShowTrashPanel] = useState(false);
 
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -105,7 +108,7 @@ const Overview: React.FC = () => {
         <StatCard label="Expenses" value={data.expense} icon="down" accent="coral" sub="Total spending" />
         <StatCard label="Net savings" value={data.savings} icon="check" accent="blue" sub="Remaining balance" />
         <StatCard label="Transactions" value={transactions.length} icon="list" accent="gold" sub="Processed records" isCount />
-        <div className="bg-teal-800 dark:bg-teal-950 text-white rounded-xl p-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300">
+        <div className="bg-teal-800 dark:bg-teal-950 text-white rounded-xl p-5">
           <div className="flex justify-between items-start mb-3">
             <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">Net worth</span>
             <div className="bg-white/15 text-white p-2 rounded-lg">
@@ -121,7 +124,7 @@ const Overview: React.FC = () => {
 
       {/* Financial Health Score Widget */}
       {userEmail && healthScore && (
-        <div className="bg-teal-800 dark:bg-teal-950 rounded-2xl p-6 sm:p-7 mb-7 text-white shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300">
+        <div className="bg-teal-800 dark:bg-teal-950 rounded-2xl p-6 sm:p-7 mb-7 text-white">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="flex-shrink-0 flex flex-col items-center">
               <div className="relative w-28 h-28">
@@ -162,11 +165,6 @@ const Overview: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Live Currency Rates Widget */}
-      <div className="mb-7">
-        <CurrencyWidget />
-      </div>
 
       {/* Monthly Trend Area Chart */}
       {userEmail && trendsData && trendsData.length > 0 && (
@@ -437,7 +435,6 @@ const Overview: React.FC = () => {
                 id="receipt-upload"
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -656,6 +653,50 @@ const Overview: React.FC = () => {
           </table>
         </div>
       </SectionCard>
+
+      {/* Recently Deleted — safety net for undo/soft-delete */}
+      {userEmail && trash.length > 0 && (
+        <div className="mt-5 bg-white dark:bg-stone-900 rounded-xl border border-stone-150 dark:border-stone-800 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setShowTrashPanel(v => !v)}
+            className="w-full flex items-center justify-between px-5 py-3.5 bg-transparent border-none cursor-pointer text-left"
+          >
+            <span className="text-sm font-serif font-bold text-stone-700 dark:text-stone-300">
+              Recently deleted ({trash.length})
+            </span>
+            <span className="text-xs text-stone-400">{showTrashPanel ? "Hide" : "Show"}</span>
+          </button>
+          {showTrashPanel && (
+            <div className="border-t border-stone-100 dark:border-stone-850 divide-y divide-stone-50 dark:divide-stone-850">
+              {trash.map((t: any) => (
+                <div key={t.id} className="flex items-center justify-between px-5 py-3 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-stone-700 dark:text-stone-300 truncate">{t.description}</p>
+                    <p className="text-[11px] text-stone-450 font-mono">
+                      {t.transaction_type === "income" ? "+" : "−"}₹{t.amount?.toLocaleString("en-IN")} • {t.transaction_date} • {t.category}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 ml-3 shrink-0">
+                    <button
+                      onClick={() => handleRestoreTransaction(t.id)}
+                      className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 dark:bg-teal-950/30 dark:text-teal-400 px-2.5 py-1.5 rounded-md border-none cursor-pointer"
+                    >
+                      Restore
+                    </button>
+                    <button
+                      onClick={() => handlePurgeTrash(t.id)}
+                      className="text-xs font-bold text-coral-600 hover:text-coral-700 bg-transparent border-none cursor-pointer px-1"
+                      title="Permanently delete"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 };
@@ -679,7 +720,7 @@ function StatCard({ label, value, icon, accent, sub, isCount }: { label: string;
     list: <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.007 8.25H3.75v-.008h.008V15Zm-.008 3h.008v.008H3.75V18Z" />
   };
   return (
-    <div className={`bg-white dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-stone-150 dark:border-stone-700/50 border-l-4 ${c.border} shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-5`}>
+    <div className={`bg-white dark:bg-stone-900 rounded-xl border border-stone-150 dark:border-stone-800 border-l-4 ${c.border} shadow-sm p-5`}>
       <div className="flex justify-between items-start mb-3">
         <span className="text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider">{label}</span>
         <div className={`${c.bg} ${c.text} p-2 rounded-lg`}>

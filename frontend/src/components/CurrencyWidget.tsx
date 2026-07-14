@@ -28,13 +28,12 @@ const CurrencyWidget: React.FC = () => {
       const res = await fetch(`${API}/currency/rates`);
       if (res.ok) {
         const data = await res.json();
-        // data is an array of { code, name, rate_to_inr, ... }
+        // API returns { rates: [{ code, name, rate_inr, ... }], base: "INR" }
         const map: Record<string, number> = {};
-        if (Array.isArray(data)) {
-          data.forEach((c: any) => { map[c.code] = c.rate_to_inr ?? c.rate ?? 1; });
-        } else if (typeof data === "object") {
-          Object.assign(map, data);
-        }
+        const ratesArray = Array.isArray(data) ? data : (data.rates ?? []);
+        ratesArray.forEach((c: any) => {
+          map[c.code] = c.rate_inr ?? c.rate_to_inr ?? c.rate ?? 1;
+        });
         setRates(map);
         setLastUpdated(new Date());
       }
