@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Date, Boolean
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Date, Boolean, Text
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -31,6 +31,7 @@ class Transaction(Base):
     category = Column(String(100))
     transaction_type = Column(String(20))  # income/expense
     receipt_image_url = Column(String(500), nullable=True)
+    embedding = Column(Text, nullable=True)
 
     created_at = Column(
         DateTime(timezone=True),
@@ -55,6 +56,7 @@ class Budget(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     category = Column(String(100))
     amount = Column(Float)
+    embedding = Column(Text, nullable=True)
 
     created_at = Column(
         DateTime(timezone=True),

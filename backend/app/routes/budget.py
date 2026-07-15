@@ -6,6 +6,8 @@ from app.database import SessionLocal
 from app.models import Budget, User
 from app.schemas import BudgetCreate, BudgetResponse
 from app.services.auth import get_current_user
+from app.services.embeddings import get_embedding
+import json
 
 router = APIRouter()
 
@@ -31,7 +33,7 @@ def get_budgets(
 
 
 @router.post("/budgets", response_model=BudgetResponse)
-def set_budget(
+async def set_budget(
     budget_data: BudgetCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -48,6 +50,12 @@ def set_budget(
 
     if existing_budget:
         existing_budget.amount = budget_data.amount
+        
+        embed_text = f"Category: {existing_budget.category}, Budget Limit: {existing_budget.amount}"
+        embedding_vector = await get_embedding(embed_text)
+        if embedding_vector:
+            existing_budget.embedding = json.dumps(embedding_vector)
+
         db.commit()
         db.refresh(existing_budget)
         return existing_budget
@@ -57,6 +65,12 @@ def set_budget(
         category=budget_data.category,
         amount=budget_data.amount
     )
+    
+    embed_text = f"Category: {new_budget.category}, Budget Limit: {new_budget.amount}"
+    embedding_vector = await get_embedding(embed_text)
+    if embedding_vector:
+        new_budget.embedding = json.dumps(embedding_vector)
+
     db.add(new_budget)
     db.commit()
     db.refresh(new_budget)

@@ -13,6 +13,7 @@ import {
   Legend
 } from "recharts";
 import { useFinance } from "../context/FinanceContext";
+import { CurrencyConverterWidget } from "../components/CurrencyConverterWidget";
 
 const Overview: React.FC = () => {
   const {
@@ -58,12 +59,12 @@ const Overview: React.FC = () => {
     handleBulkRecategorize,
     scanReceipt,
     isScanningReceipt,
-    trash,
-    handleRestoreTransaction,
-    handlePurgeTrash,
+    trash = [],
+    handleRestoreTransaction = async () => { },
+    handlePurgeTrash = async () => { },
     filteredTransactions,
     categories
-  } = useFinance();
+  } = useFinance() as any;
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkCategory, setBulkCategory] = useState("");
@@ -165,6 +166,9 @@ const Overview: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Currency Converter Widget */}
+      <CurrencyConverterWidget />
 
       {/* Monthly Trend Area Chart */}
       {userEmail && trendsData && trendsData.length > 0 && (

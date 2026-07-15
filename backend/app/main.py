@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text, inspect
+import os
+from dotenv import load_dotenv
 
 from app.database import engine
 from app.models import Base
-
 
 # Routers
 from app.routes.auth import router as auth_router
@@ -48,14 +50,10 @@ from app.routes.receipt import router as receipt_router
 from app.routes.receipt_store import router as receipt_store_router
 # Gamified challenges
 from app.routes.challenges import router as challenges_router
-from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-# Clean up misspelled reciept.py file if it exists
 
 try:
     reciept_path = os.path.join(os.path.dirname(__file__), "routes", "reciept.py")
@@ -76,6 +74,8 @@ try:
         conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS original_amount DOUBLE PRECISION"))
         conn.execute(text("ALTER TABLE recurring_transactions ADD COLUMN IF NOT EXISTS exchange_rate DOUBLE PRECISION DEFAULT 1.0"))
         conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_image_url VARCHAR(500)"))
+        conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS embedding TEXT"))
+        conn.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS embedding TEXT"))
         conn.commit()
 except Exception as e:
     print(f"Warning: Could not alter database tables: {e}")

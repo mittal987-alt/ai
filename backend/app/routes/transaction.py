@@ -8,6 +8,8 @@ from app.models import Transaction, User, Account
 from app.schemas import TransactionCreate, TransactionUpdate, BulkTransactionIds, BulkRecategorize
 from app.services.auth import get_current_user
 from app.services.currency_service import convert_currency_logic
+from app.services.embeddings import get_embedding
+import json
 
 router = APIRouter()
 
@@ -98,6 +100,12 @@ async def create_transaction(
         account_id=tx_data.account_id,
         receipt_image_url=tx_data.receipt_image_url,
     )
+    
+    embed_text = f"Date: {new_tx.transaction_date}, Desc: {new_tx.description}, Amt: {new_tx.amount}, Cat: {new_tx.category}, Type: {new_tx.transaction_type}"
+    embedding_vector = await get_embedding(embed_text)
+    if embedding_vector:
+        new_tx.embedding = json.dumps(embedding_vector)
+
     db.add(new_tx)
 
     if tx_data.account_id is not None:
@@ -198,6 +206,11 @@ async def update_transaction(
     tx.category = tx_data.category
     tx.transaction_type = tx_data.transaction_type
     tx.account_id = tx_data.account_id
+
+    embed_text = f"Date: {tx.transaction_date}, Desc: {tx.description}, Amt: {tx.amount}, Cat: {tx.category}, Type: {tx.transaction_type}"
+    embedding_vector = await get_embedding(embed_text)
+    if embedding_vector:
+        tx.embedding = json.dumps(embedding_vector)
 
     # Apply the (possibly new) transaction to whichever account it's now linked to
     if tx_data.account_id is not None:

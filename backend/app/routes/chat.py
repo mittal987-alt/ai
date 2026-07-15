@@ -7,6 +7,8 @@ from app.database import SessionLocal
 from app.models import Transaction, User, Budget
 from app.schemas import ChatRequest
 from app.services.auth import get_current_user
+from app.services.embeddings import get_embedding, cosine_similarity
+import json
 
 router = APIRouter()
 
@@ -109,21 +111,67 @@ async def chat_with_coach(
         return {"response": ai_response}
 
     # Live Call to Gemini API (using standard HTTP request for robustness)
-    tx_context = []
+    user_query_emb = await get_embedding(request.message)
+
+    scored_txs = []
     for t in transactions:
+        tx_emb = None
+        if t.embedding:
+            try:
+                tx_emb = json.loads(t.embedding)
+            except:
+                pass
+        
+        if not tx_emb:
+            embed_text = f"Date: {t.transaction_date}, Desc: {t.description}, Amt: {t.amount}, Cat: {t.category}, Type: {t.transaction_type}"
+            tx_emb = await get_embedding(embed_text)
+            if tx_emb:
+                t.embedding = json.dumps(tx_emb)
+                db.commit()
+                
+        score = cosine_similarity(user_query_emb, tx_emb) if tx_emb and user_query_emb else 0.0
+        scored_txs.append((score, t))
+        
+    scored_budgets = []
+    for b in budgets:
+        b_emb = None
+        if b.embedding:
+            try:
+                b_emb = json.loads(b.embedding)
+            except:
+                pass
+                
+        if not b_emb:
+            embed_text = f"Category: {b.category}, Budget Limit: {b.amount}"
+            b_emb = await get_embedding(embed_text)
+            if b_emb:
+                b.embedding = json.dumps(b_emb)
+                db.commit()
+                
+        score = cosine_similarity(user_query_emb, b_emb) if b_emb and user_query_emb else 0.0
+        scored_budgets.append((score, b))
+
+    scored_txs.sort(key=lambda x: x[0], reverse=True)
+    scored_budgets.sort(key=lambda x: x[0], reverse=True)
+    
+    top_txs = [item[1] for item in scored_txs[:15]]
+    top_budgets = [item[1] for item in scored_budgets[:5]]
+
+    tx_context = []
+    for t in top_txs:
         tx_context.append(f"Date: {t.transaction_date}, Desc: {t.description}, Amt: {t.amount}, Cat: {t.category}, Type: {t.transaction_type}")
 
     budget_context = []
-    for b in budgets:
+    for b in top_budgets:
         budget_context.append(f"Category: {b.category}, Budget Limit: {b.amount}")
 
     system_instruction = (
-        "You are an expert AI Personal Finance Coach. Below is the user's financial profile. "
-        "Use this data to answer their query accurately. Be polite, encouraging, and provide clear breakdowns when requested. "
+        "You are an expert AI Personal Finance Coach. Below is the most relevant data from the user's financial profile. "
+        "Use this context to answer their query accurately. Be polite, encouraging, and provide clear breakdowns when requested. "
         "Always output clean formatting (use bold text, bullets, or emojis where appropriate). "
         f"User name: {current_user.name}\n"
-        f"Transactions Context:\n" + "\n".join(tx_context) + "\n\n"
-        f"Budgets Context:\n" + "\n".join(budget_context)
+        f"Relevant Transactions:\n" + "\n".join(tx_context) + "\n\n"
+        f"Relevant Budgets:\n" + "\n".join(budget_context)
     )
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
