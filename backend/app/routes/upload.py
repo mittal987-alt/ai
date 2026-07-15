@@ -6,7 +6,6 @@ import tempfile
 import os
 import re
 import numpy as np
-import easyocr
 from PIL import Image
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter  # Added for password handling
@@ -18,7 +17,14 @@ from app.services.auth import get_current_user
 from app.services.currency_service import convert_currency_logic
 
 router = APIRouter()
-reader = easyocr.Reader(['en'])
+reader = None
+
+def get_reader():
+    global reader
+    if reader is None:
+        import easyocr
+        reader = easyocr.Reader(['en'])
+    return reader
 
 def get_db():
     db = SessionLocal()
@@ -32,7 +38,8 @@ def ocr_extract_text(pdf_path: str) -> str:
     pages = convert_from_path(pdf_path)
     for page in pages:
         image = np.array(page)
-        results = reader.readtext(image)
+        ocr_reader = get_reader()
+        results = ocr_reader.readtext(image)
         for result in results:
             text += result[1] + "\n"
     return text
@@ -389,7 +396,8 @@ async def scan_receipt(
         img_array = np.array(pil_image)
 
         # Run OCR — detail=0 gives plain strings, paragraph=True merges lines
-        ocr_results = reader.readtext(img_array, detail=1, paragraph=False)
+        ocr_reader = get_reader()
+        ocr_results = ocr_reader.readtext(img_array, detail=1, paragraph=False)
         if not ocr_results:
             return {"success": False, "message": "Could not extract any text from the image. Please try a clearer photo."}
 

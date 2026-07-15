@@ -11,7 +11,6 @@ import tempfile
 from datetime import date, datetime
 from typing import List
 
-import easyocr
 from fastapi import APIRouter, UploadFile, File, Depends
 from sqlalchemy.orm import Session
 
@@ -20,7 +19,14 @@ from app.models import User, Category
 from app.services.auth import get_current_user
 
 router = APIRouter()
-reader = easyocr.Reader(['en'])
+reader = None
+
+def get_reader():
+    global reader
+    if reader is None:
+        import easyocr
+        reader = easyocr.Reader(['en'])
+    return reader
 
 
 def get_db():
@@ -132,7 +138,8 @@ async def scan_receipt(
             tmp.write(contents)
             tmp_path = tmp.name
 
-        results = reader.readtext(tmp_path, detail=0)
+        ocr_reader = get_reader()
+        results = ocr_reader.readtext(tmp_path, detail=0)
         lines = [r.strip() for r in results if r.strip()]
         full_text = "\n".join(lines)
 
