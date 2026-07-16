@@ -59,6 +59,8 @@ interface FinanceContextType {
   // Transactions CRUD
   showTxModal: boolean;
   setShowTxModal: React.Dispatch<React.SetStateAction<boolean>>;
+  showReceiptScanModal: boolean;
+  setShowReceiptScanModal: React.Dispatch<React.SetStateAction<boolean>>;
   txModalMode: "add" | "edit";
   setTxModalMode: React.Dispatch<React.SetStateAction<"add" | "edit">>;
   selectedTxId: number | null;
@@ -287,6 +289,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Transaction CRUD state
   const [showTxModal, setShowTxModal] = useState(false);
+  const [showReceiptScanModal, setShowReceiptScanModal] = useState(false);
   const [txModalMode, setTxModalMode] = useState<"add" | "edit">("add");
   const [selectedTxId, setSelectedTxId] = useState<number | null>(null);
   const [txDescription, setTxDescription] = useState("");
@@ -1444,51 +1447,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (err) { console.error(err); }
   };
 
-  const handleBulkTxDelete = async (ids: number[]) => {
-    if (ids.length === 0) return;
-    if (!(await confirmAction(`Delete ${ids.length} transaction${ids.length === 1 ? "" : "s"}? This can't be undone.`))) return;
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch("http://127.0.0.1:8000/transactions/bulk", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
-        body: JSON.stringify({ ids })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        showToast(`Deleted ${data.deleted} transaction${data.deleted === 1 ? "" : "s"}.`, "success");
-        loadData();
-      } else {
-        showToast("Failed to delete transactions.", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      showToast("Couldn't reach the backend.", "error");
-    }
-  };
-
-  const handleBulkTxRecategorize = async (ids: number[], category: string) => {
-    if (ids.length === 0) return;
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch("http://127.0.0.1:8000/transactions/bulk/category", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
-        body: JSON.stringify({ ids, category })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        showToast(`Recategorized ${data.updated} transaction${data.updated === 1 ? "" : "s"} to "${category}".`, "success");
-        loadData();
-      } else {
-        showToast("Failed to recategorize transactions.", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      showToast("Couldn't reach the backend.", "error");
-    }
-  };
-
   const filteredTransactions = transactions.filter(t => {
     const matchSearch = t.description.toLowerCase().includes(filterSearch.toLowerCase());
     const matchCategory = filterCategory === "All" || t.category === filterCategory;
@@ -1713,7 +1671,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         scanReceipt,
         isScanningReceipt,
         openEditTxModal,
-        filteredTransactions
+        filteredTransactions,
+        showReceiptScanModal,
+        setShowReceiptScanModal
       }}
     >
       {children}

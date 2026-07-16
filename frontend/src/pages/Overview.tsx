@@ -264,8 +264,8 @@ const Overview: React.FC = () => {
         <SectionCard title="Category budgets" desc="Targets you've set">
           {budgets.length > 0 ? (
             <div className="space-y-4 mb-5">
-              {budgets.map((b) => {
-                const categorySpent = transactions.filter(t => t.category === b.category && t.transaction_type === "expense").reduce((sum, t) => sum + t.amount, 0);
+              {budgets.map((b: any) => {
+                const categorySpent = transactions.filter((t: any) => t.category === b.category && t.transaction_type === "expense").reduce((sum: number, t: any) => sum + t.amount, 0);
                 const percentage = Math.min((categorySpent / b.amount) * 100, 100);
                 const isExceeded = categorySpent > b.amount;
                 const isClose = categorySpent > b.amount * 0.8 && !isExceeded;
@@ -298,7 +298,7 @@ const Overview: React.FC = () => {
                   onChange={(e) => setBudgetCategory(e.target.value)}
                   className="text-xs w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1.5 focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200 cursor-pointer"
                 >
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categories.map((c: any) => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
                 <input
                   type="number"
@@ -534,7 +534,7 @@ const Overview: React.FC = () => {
             className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-600 text-stone-800 dark:text-stone-200 cursor-pointer"
           >
             <option value="All">All categories</option>
-            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+            {categories.map((c: any) => <option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
           <select
             value={filterType}
@@ -557,7 +557,7 @@ const Overview: React.FC = () => {
                 className="bg-white dark:bg-stone-900 border border-teal-200 dark:border-teal-800 rounded-md px-2 py-1.5 text-xs text-stone-700 dark:text-stone-200 cursor-pointer"
               >
                 <option value="">Recategorize to…</option>
-                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {categories.map((c: any) => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
               <button
                 onClick={() => { if (bulkCategory) { handleBulkRecategorize(selectedIds, bulkCategory); setSelectedIds([]); setBulkCategory(""); } }}
@@ -611,7 +611,7 @@ const Overview: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-850 text-sm font-medium text-stone-700 dark:text-stone-300">
               {filteredTransactions.length > 0 ? (
-                filteredTransactions.map((t) => {
+                filteredTransactions.map((t: any) => {
                   const isIncome = t.transaction_type === "income" || t.category === "Income";
                   return (
                     <tr key={t.id} className="hover:bg-stone-50/60 dark:hover:bg-stone-850/30 transition-colors group">
@@ -717,7 +717,7 @@ function StatCard({ label, value, icon, accent, sub, isCount }: { label: string;
     gold: { border: "border-l-amber-500", text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30" }
   };
   const c = accentMap[accent];
-  const paths: Record<string, JSX.Element> = {
+  const paths: Record<string, React.ReactNode> = {
     up: <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.28m5.94 2.28-2.28 5.941" />,
     down: <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6 9 12.75l4.306-4.307a11.95 11.95 0 0 1 5.814 5.519l2.74 1.22m0 0-5.94 2.281m5.94-2.28-2.28 5.941" />,
     check: <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 12.75 11.25 15 15 9.75" />,

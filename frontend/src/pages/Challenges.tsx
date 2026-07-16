@@ -40,7 +40,6 @@ const Challenges: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [joiningType, setJoiningType] = useState<string | null>(null);
   const [leavingType, setLeavingType] = useState<string | null>(null);
-  const [celebrateType, setCelebrateType] = useState<string | null>(null);
 
   const token = () => localStorage.getItem("token");
 
@@ -54,10 +53,6 @@ const Challenges: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setChallenges(data);
-        // Celebrate newly completed ones
-        data.forEach((c: any) => {
-          if (c.is_complete && c.joined) setCelebrateType(c.type);
-        });
       }
     } catch (e) { console.error(e); }
     setLoading(false);

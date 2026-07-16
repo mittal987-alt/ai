@@ -207,8 +207,8 @@ const Layout: React.FC = () => {
     handleReminderSubmit,
     showReceiptScanModal,
     setShowReceiptScanModal,
-    isScanning,
-    scanReceiptAndPrefill,
+    isScanningReceipt,
+    scanReceipt,
   } = useFinance();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -370,7 +370,7 @@ const Layout: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => {
-                      setShowReceiptScanModal(v => !v);
+                      setShowReceiptScanModal(!showReceiptScanModal);
                       setShowUploadPanel(false);
                     }}
                     className="relative flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs font-bold py-2.5 px-3.5 rounded-lg transition-all cursor-pointer"
@@ -440,16 +440,16 @@ const Layout: React.FC = () => {
                           <button
                             onClick={() => {
                               if (selectedReceipt) {
-                                scanReceiptAndPrefill(selectedReceipt).then(() => {
+                                scanReceipt(selectedReceipt).then(() => {
                                   setSelectedReceipt(null);
                                   setReceiptPreview(null);
                                 });
                               }
                             }}
-                            disabled={isScanning || !selectedReceipt}
+                            disabled={isScanningReceipt || !selectedReceipt}
                             className="w-full bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 disabled:from-stone-400 disabled:to-stone-400 dark:disabled:from-stone-800 dark:disabled:to-stone-800 text-white text-xs font-bold py-2.5 rounded-md transition-all duration-300 transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(15,110,86,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] flex items-center justify-center gap-1.5 cursor-pointer border-none"
                           >
-                          {isScanning ? (
+                          {isScanningReceipt ? (
                             <>
                               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                               Reading receipt…
