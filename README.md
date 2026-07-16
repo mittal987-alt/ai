@@ -106,47 +106,7 @@ finance-coach/
 │   │   ├── models.py               # 14 ORM models (User → Challenge)
 │   │   ├── schemas.py              # Pydantic request/response schemas
 │   │   ├── routes/                  # 33 API route modules
-│   │   │   ├── auth.py             #   signup, login, JWT
-│   │   │   ├── upload.py           #   bank statement PDF upload & parse
-│   │   │   ├── transaction.py      #   CRUD + search + filters
-│   │   │   ├── dashboard.py        #   summary stats
-│   │   │   ├── insights.py         #   AI-generated spending insights
-│   │   │   ├── chat.py             #   AI financial assistant
-│   │   │   ├── budget.py           #   budget CRUD
-│   │   │   ├── budget_planner.py   #   AI budget recommendations
-│   │   │   ├── goal.py             #   savings goals
-│   │   │   ├── subscription.py     #   subscription manager
-│   │   │   ├── recurring.py        #   auto-recurring transactions
-│   │   │   ├── investments.py      #   portfolio management
-│   │   │   ├── loans.py            #   loan & EMI tracker
-│   │   │   ├── networth.py         #   net worth calculation
-│   │   │   ├── tax.py              #   tax estimation
-│   │   │   ├── alerts.py           #   smart financial alerts
-│   │   │   ├── reminders.py        #   payment reminders
-│   │   │   ├── analytics.py        #   advanced analytics
-│   │   │   ├── categorize.py       #   AI categorization
-│   │   │   ├── heatmap.py          #   spending heatmap data
-│   │   │   ├── gamification.py     #   XP, levels, achievements
-│   │   │   ├── challenges.py       #   savings challenges
-│   │   │   ├── split.py            #   bill splitting
-│   │   │   ├── receipt.py          #   receipt OCR scanning
-│   │   │   ├── receipt_store.py    #   receipt image storage
-│   │   │   ├── currency.py         #   live exchange rates
-│   │   │   ├── categories.py       #   custom categories CRUD
-│   │   │   ├── import_csv.py       #   CSV import
-│   │   │   ├── pdf_report.py       #   PDF report generation
-│   │   │   ├── backup.py           #   full data export/import
-│   │   │   ├── daily_brief.py      #   daily financial snapshot
-│   │   │   ├── account.py          #   multi-account management
-│   │   │   └── report.py           #   reporting endpoints
 │   │   └── services/
-│   │       ├── parser.py           #   bank statement PDF parser
-│   │       ├── auth.py             #   JWT & password utilities
-│   │       ├── embeddings.py       #   AI embedding generation
-│   │       ├── csv_service.py      #   CSV parsing logic
-│   │       ├── currency_service.py #   exchange rate fetching
-│   │       ├── pdf_service.py      #   PDF report builder
-│   │       └── scheduler.py        #   APScheduler daily jobs
 │   ├── requirements.txt
 │   └── .env
 ├── frontend/
@@ -154,23 +114,6 @@ finance-coach/
 │   │   ├── App.tsx                 # Router & app shell
 │   │   ├── main.tsx                # React entry point
 │   │   ├── pages/
-│   │   │   ├── dashboard.tsx       # Main dashboard (137 KB of UI!)
-│   │   │   ├── Overview.tsx        # Financial overview
-│   │   │   ├── Investments.tsx     # Portfolio tracker
-│   │   │   ├── Loans.tsx           # Loan & EMI manager
-│   │   │   ├── Planner.tsx         # Budget planner
-│   │   │   ├── Challenges.tsx      # Gamified savings challenges
-│   │   │   ├── RecurringTransactions.tsx
-│   │   │   ├── Subscriptions.tsx
-│   │   │   ├── Notifications.tsx
-│   │   │   ├── DailyBrief.tsx
-│   │   │   ├── Goals.tsx
-│   │   │   ├── Splits.tsx
-│   │   │   ├── Tax.tsx
-│   │   │   ├── Calendar.tsx        # Spending heatmap calendar
-│   │   │   ├── Accounts.tsx
-│   │   │   ├── Achievements.tsx
-│   │   │   └── settings.tsx
 │   │   ├── components/
 │   │   │   ├── Layout.tsx          # App shell, sidebar, navigation
 │   │   │   ├── CurrencyWidget.tsx
