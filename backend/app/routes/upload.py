@@ -125,7 +125,7 @@ async def upload_statement(
             return {"success": False, "message": "Unable to extract text from this PDF."}
 
         # ---------- Extract & Parse Transactions ----------
-        transactions = extract_transactions(extracted_text)
+        transactions = extract_transactions(extracted_text, pdf_path=tmp_path)
 
         if len(transactions) == 0:
             return {
@@ -174,27 +174,34 @@ async def upload_statement(
                 skipped += 1
                 continue
 
-            transaction_type = "expense"
-            desc = tx["description"].upper()
-            
-            # Robust check for credit/deposit/income indicators
-            is_income = (
-                any(k in desc for k in ["SALARY", "CREDIT", "DEPOSIT", "INTEREST", "REFUND", "DIVIDEND"]) or
-                "/CR/" in desc or
-                desc.endswith("/CR") or
-                desc.startswith("CR/") or
-                re.search(r"\bCR\b", desc) is not None or
-                re.search(r"\b(NEFT|IMPS|RTGS|UPI|CHG|INT)?CR\b", desc) is not None or
-                re.search(r"\b(NEFT|IMPS|RTGS|UPI|CHG|INT)?CR-", desc) is not None
-            )
-            
-            if is_income:
-                transaction_type = "income"
+            # Use the transaction_type from the parser (primary source)
+            transaction_type = tx.get("transaction_type")
+
+            # Fallback: keyword-based detection if parser didn't determine type
+            if not transaction_type:
+                desc_upper = tx["description"].upper()
+                is_income = (
+                    any(k in desc_upper for k in [
+                        "SALARY", "CREDIT", "DEPOSIT", "INTEREST",
+                        "REFUND", "DIVIDEND", "CASHBACK", "REVERSAL",
+                    ]) or
+                    "/CR/" in desc_upper or
+                    desc_upper.endswith("/CR") or
+                    desc_upper.startswith("CR/") or
+                    re.search(r"\bCR\b", desc_upper) is not None
+                )
+                transaction_type = "income" if is_income else "expense"
+
+            # Clean any lingering CR/DR markers from the description
+            clean_desc = re.sub(
+                r"\s+(CR|DR|CR/|DR/)\s*$", "",
+                tx["description"], flags=re.IGNORECASE,
+            ).strip()
 
             transaction = Transaction(
                 user_id=current_user.id,
                 transaction_date=tx_date,
-                description=tx["description"],
+                description=clean_desc or tx["description"],
                 amount=final_amount,
                 currency=statement_currency,
                 original_amount=stored_original_amount,
@@ -207,12 +214,18 @@ async def upload_statement(
 
         db.commit()
 
+        # Count income vs expense for the response
+        income_count = sum(1 for tx in transactions if tx.get("transaction_type") == "income")
+        expense_count = sum(1 for tx in transactions if tx.get("transaction_type") == "expense")
+
         return {
             "success": True,
             "filename": file.filename,
             "transactions_found": len(transactions),
             "transactions_saved": saved,
             "duplicates_skipped": skipped,
+            "income_count": income_count,
+            "expense_count": expense_count,
             "currency": statement_currency,
             "exchange_rate": exchange_rate,
             "message": "Bank statement processed successfully."
