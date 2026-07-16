@@ -105,6 +105,7 @@ app = FastAPI()
 origins = [
     "http://localhost:5173",
     "https://ai-w27z.vercel.app",
+    "https://ai-frontend-5tom.onrender.com",
 ]
 
 app.add_middleware(
