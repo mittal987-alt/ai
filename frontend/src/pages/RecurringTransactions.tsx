@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useFinance } from "../context/FinanceContext";
+import { API_URL } from "../config";
 
-const API = "http://127.0.0.1:8000";
+const API = API_URL;
 
 const FREQUENCIES = ["daily", "weekly", "monthly", "yearly"];
 

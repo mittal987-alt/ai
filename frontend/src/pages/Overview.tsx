@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useFinance } from "../context/FinanceContext";
 import { CurrencyConverterWidget } from "../components/CurrencyConverterWidget";
+import { API_URL } from "../config";
 
 const Overview: React.FC = () => {
   const {
@@ -475,7 +476,7 @@ const Overview: React.FC = () => {
                   const formData = new FormData();
                   formData.append("file", file);
                   try {
-                    const res = await fetch("http://127.0.0.1:8000/import/csv", {
+                    const res = await fetch(`${API_URL}/import/csv`, {
                       method: "POST",
                       headers: { Authorization: `Bearer ${token}` },
                       body: formData,

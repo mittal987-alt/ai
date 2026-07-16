@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { API_URL } from "../config";
 import {
   PieChart,
   Pie,
@@ -191,7 +192,7 @@ function Dashboard() {
     const headers: HeadersInit = { Authorization: `Bearer ${token}` };
 
     try {
-      const dashboardRes = await fetch("http://127.0.0.1:8000/dashboard", { headers });
+      const dashboardRes = await fetch(`${API_URL}/dashboard`, { headers });
       if (dashboardRes.ok) {
         const dashboardData = await dashboardRes.json();
         setData(dashboardData);
@@ -212,55 +213,55 @@ function Dashboard() {
         return;
       }
 
-      const txRes = await fetch("http://127.0.0.1:8000/transactions", { headers });
+      const txRes = await fetch(`${API_URL}/transactions`, { headers });
       setTransactions(txRes.ok ? await txRes.json() : []);
 
-      const insightsRes = await fetch("http://127.0.0.1:8000/insights", { headers });
+      const insightsRes = await fetch(`${API_URL}/insights`, { headers });
       setInsights(insightsRes.ok ? await insightsRes.json() : { food: 0, travel: 0, shopping: 0, insights: [] });
 
-      const budgetsRes = await fetch("http://127.0.0.1:8000/budgets", { headers });
+      const budgetsRes = await fetch(`${API_URL}/budgets`, { headers });
       setBudgets(budgetsRes.ok ? await budgetsRes.json() : []);
 
-      const trendsRes = await fetch("http://127.0.0.1:8000/analytics/trends", { headers });
+      const trendsRes = await fetch(`${API_URL}/analytics/trends`, { headers });
       setTrendsData(trendsRes.ok ? await trendsRes.json() : []);
 
-      const goalsRes = await fetch("http://127.0.0.1:8000/goals", { headers });
+      const goalsRes = await fetch(`${API_URL}/goals`, { headers });
       setGoals(goalsRes.ok ? await goalsRes.json() : []);
 
-      const subsRes = await fetch("http://127.0.0.1:8000/subscriptions", { headers });
+      const subsRes = await fetch(`${API_URL}/subscriptions`, { headers });
       setSubscriptions(subsRes.ok ? await subsRes.json() : []);
 
-      const detectRes = await fetch("http://127.0.0.1:8000/subscriptions/detect", { headers });
+      const detectRes = await fetch(`${API_URL}/subscriptions/detect`, { headers });
       setDetectedSubs(detectRes.ok ? await detectRes.json() : []);
 
-      const accountsRes = await fetch("http://127.0.0.1:8000/accounts/", { headers });
+      const accountsRes = await fetch(`${API_URL}/accounts/`, { headers });
       setAccounts(accountsRes.ok ? await accountsRes.json() : []);
 
-      const splitsRes = await fetch("http://127.0.0.1:8000/splits/", { headers });
+      const splitsRes = await fetch(`${API_URL}/splits/`, { headers });
       setSplits(splitsRes.ok ? await splitsRes.json() : []);
 
-      const healthRes = await fetch("http://127.0.0.1:8000/analytics/health-score", { headers });
+      const healthRes = await fetch(`${API_URL}/analytics/health-score`, { headers });
       setHealthScore(healthRes.ok ? await healthRes.json() : null);
 
-      const alertsRes = await fetch("http://127.0.0.1:8000/alerts", { headers });
+      const alertsRes = await fetch(`${API_URL}/alerts`, { headers });
       if (alertsRes.ok) setAlertsData(await alertsRes.json());
 
-      const taxRes = await fetch("http://127.0.0.1:8000/tax/estimate", { headers });
+      const taxRes = await fetch(`${API_URL}/tax/estimate`, { headers });
       if (taxRes.ok) setTaxData(await taxRes.json());
 
-      const planRes = await fetch("http://127.0.0.1:8000/budget/plan", { headers });
+      const planRes = await fetch(`${API_URL}/budget/plan`, { headers });
       if (planRes.ok) setBudgetPlan(await planRes.json());
 
-      const nwRes = await fetch("http://127.0.0.1:8000/networth", { headers });
+      const nwRes = await fetch(`${API_URL}/networth`, { headers });
       if (nwRes.ok) setNetWorth(await nwRes.json());
 
-      const remRes = await fetch("http://127.0.0.1:8000/reminders", { headers });
+      const remRes = await fetch(`${API_URL}/reminders`, { headers });
       setReminders(remRes.ok ? await remRes.json() : []);
 
-      const hmRes = await fetch("http://127.0.0.1:8000/analytics/daily-spend", { headers });
+      const hmRes = await fetch(`${API_URL}/analytics/daily-spend`, { headers });
       if (hmRes.ok) setHeatmapData(await hmRes.json());
 
-      const gameRes = await fetch("http://127.0.0.1:8000/gamification/stats", { headers });
+      const gameRes = await fetch(`${API_URL}/gamification/stats`, { headers });
       if (gameRes.ok) setGamificationData(await gameRes.json());
     } catch (err) {
       console.error("Error fetching financial data:", err);
@@ -292,7 +293,7 @@ function Dashboard() {
       return;
     }
     try {
-      const response = await fetch("http://127.0.0.1:8000/profile", {
+      const response = await fetch(`${API_URL}/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -338,7 +339,7 @@ function Dashboard() {
     if (passwordToSubmit) formData.append("password", passwordToSubmit);
     setIsUploading(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/upload-statement", {
+      const response = await fetch(`${API_URL}/upload-statement`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -390,7 +391,7 @@ function Dashboard() {
     setIsLoadingAuth(true);
     try {
       if (authMode === "signup") {
-        const response = await fetch("http://127.0.0.1:8000/signup", {
+        const response = await fetch(`${API_URL}/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: authName, email: authEmail, password: authPassword })
@@ -403,7 +404,7 @@ function Dashboard() {
           setAuthError(data.detail || "Signup failed");
         }
       } else {
-        const response = await fetch("http://127.0.0.1:8000/login", {
+        const response = await fetch(`${API_URL}/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: authEmail, password: authPassword })
@@ -455,7 +456,7 @@ function Dashboard() {
     if (!reminderName || !reminderAmount || !reminderDueDate) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/reminders", {
+      const res = await fetch(`${API_URL}/reminders`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({ name: reminderName, amount: parseFloat(reminderAmount), due_date: reminderDueDate, category: reminderCategory })
@@ -471,7 +472,7 @@ function Dashboard() {
   const handleReminderPay = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/reminders/${id}/pay`, { method: "PUT", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      await fetch(`${API_URL}/reminders/${id}/pay`, { method: "PUT", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       loadData();
     } catch (err) { console.error(err); }
   };
@@ -480,7 +481,7 @@ function Dashboard() {
     if (!confirm("Delete this reminder?")) return;
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/reminders/${id}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      await fetch(`${API_URL}/reminders/${id}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       loadData();
     } catch (err) { console.error(err); }
   };
@@ -490,7 +491,7 @@ function Dashboard() {
     if (!token) return;
     setIsAutoCatting(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/transactions/auto-categorize", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_URL}/transactions/auto-categorize`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       const result = await res.json();
       setAutoCatResult(result);
       loadData();
@@ -506,7 +507,7 @@ function Dashboard() {
     try {
       for (const item of budgetPlan.plan) {
         if (item.suggested_budget > 0) {
-          await fetch("http://127.0.0.1:8000/budgets", {
+          await fetch(`${API_URL}/budgets`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
             body: JSON.stringify({ category: item.category, amount: item.suggested_budget })
@@ -529,7 +530,7 @@ function Dashboard() {
       current_amount: parseFloat(goalCurrentAmount || "0"),
       target_date: goalTargetDate
     };
-    const url = goalModalMode === "add" ? "http://127.0.0.1:8000/goals" : `http://127.0.0.1:8000/goals/${selectedGoalId}`;
+    const url = goalModalMode === "add" ? `${API_URL}/goals` : `${API_URL}/goals/${selectedGoalId}`;
     const method = goalModalMode === "add" ? "POST" : "PUT";
     try {
       const res = await fetch(url, {
@@ -550,7 +551,7 @@ function Dashboard() {
     if (!confirm("Are you sure you want to delete this savings goal?")) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/goals/${goalId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      const res = await fetch(`${API_URL}/goals/${goalId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       if (res.ok) loadData();
     } catch (err) { console.error(err); }
   };
@@ -570,7 +571,7 @@ function Dashboard() {
     if (!subName || !subAmount || !subNextDueDate) return;
     const token = localStorage.getItem("token");
     const payload = { name: subName, amount: parseFloat(subAmount), category: subCategory, billing_cycle: subBillingCycle, next_due_date: subNextDueDate };
-    const url = subModalMode === "add" ? "http://127.0.0.1:8000/subscriptions" : `http://127.0.0.1:8000/subscriptions/${selectedSubId}`;
+    const url = subModalMode === "add" ? `${API_URL}/subscriptions` : `${API_URL}/subscriptions/${selectedSubId}`;
     const method = subModalMode === "add" ? "POST" : "PUT";
     try {
       const res = await fetch(url, {
@@ -591,7 +592,7 @@ function Dashboard() {
     if (!confirm("Are you sure you want to remove this subscription?")) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/subscriptions/${subId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      const res = await fetch(`${API_URL}/subscriptions/${subId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       if (res.ok) loadData();
     } catch (err) { console.error(err); }
   };
@@ -610,7 +611,7 @@ function Dashboard() {
   const acceptDetectedSub = async (detected: any) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/subscriptions", {
+      const res = await fetch(`${API_URL}/subscriptions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify(detected)
@@ -627,7 +628,7 @@ function Dashboard() {
     if (!accountName) return;
     const token = localStorage.getItem("token");
     const payload = { name: accountName, account_type: accountType, balance: parseFloat(accountBalance || "0") };
-    const url = accountModalMode === "add" ? "http://127.0.0.1:8000/accounts/" : `http://127.0.0.1:8000/accounts/${selectedAccountId}`;
+    const url = accountModalMode === "add" ? `${API_URL}/accounts/` : `${API_URL}/accounts/${selectedAccountId}`;
     const method = accountModalMode === "add" ? "POST" : "PUT";
     try {
       const res = await fetch(url, {
@@ -647,7 +648,7 @@ function Dashboard() {
     if (!confirm("Delete this account?")) return;
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/accounts/${id}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      await fetch(`${API_URL}/accounts/${id}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       loadData();
     } catch (err) { console.error(err); }
   };
@@ -667,7 +668,7 @@ function Dashboard() {
     const token = localStorage.getItem("token");
     const payload = { description: splitDescription, total_amount: parseFloat(splitTotal), friend_name: splitFriend, amount_owed: parseFloat(splitOwed) };
     try {
-      const res = await fetch("http://127.0.0.1:8000/splits/", {
+      const res = await fetch(`${API_URL}/splits/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify(payload)
@@ -683,7 +684,7 @@ function Dashboard() {
   const handleSplitSettle = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/splits/${id}/settle`, { method: "PUT", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      await fetch(`${API_URL}/splits/${id}/settle`, { method: "PUT", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       loadData();
     } catch (err) { console.error(err); }
   };
@@ -692,7 +693,7 @@ function Dashboard() {
     if (!confirm("Delete this split record?")) return;
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/splits/${id}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      await fetch(`${API_URL}/splits/${id}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       loadData();
     } catch (err) { console.error(err); }
   };
@@ -705,7 +706,7 @@ function Dashboard() {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/report/pdf", {
+      const response = await fetch(`${API_URL}/report/pdf`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -741,7 +742,7 @@ function Dashboard() {
   const handleCSVExport = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    const url = `http://127.0.0.1:8000/reports/csv`;
+    const url = `${API_URL}/reports/csv`;
     const a = document.createElement("a");
     a.href = url;
     a.setAttribute("download", "finance_report.csv");
@@ -780,7 +781,7 @@ function Dashboard() {
     if (!budgetAmount || parseFloat(budgetAmount) <= 0) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/budgets", {
+      const res = await fetch(`${API_URL}/budgets`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({ category: budgetCategory, amount: parseFloat(budgetAmount) })
@@ -797,7 +798,7 @@ function Dashboard() {
     if (!confirm("Are you sure you want to delete this budget target?")) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/budgets/${budgetId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      const res = await fetch(`${API_URL}/budgets/${budgetId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       if (res.ok) loadData();
     } catch (err) { console.error("Error deleting budget:", err); }
   };
@@ -811,7 +812,7 @@ function Dashboard() {
     setChatLoading(true);
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/chat", {
+      const res = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({ message: userMsg })
@@ -829,7 +830,7 @@ function Dashboard() {
     if (!txDescription || !txAmount) return;
     const payload = { description: txDescription, amount: parseFloat(txAmount), category: txCategory, transaction_type: txType, transaction_date: txDate };
     const token = localStorage.getItem("token");
-    const url = txModalMode === "add" ? "http://127.0.0.1:8000/transactions" : `http://127.0.0.1:8000/transactions/${selectedTxId}`;
+    const url = txModalMode === "add" ? `${API_URL}/transactions` : `${API_URL}/transactions/${selectedTxId}`;
     const method = txModalMode === "add" ? "POST" : "PUT";
     try {
       const res = await fetch(url, {
@@ -851,7 +852,7 @@ function Dashboard() {
     if (!confirm("Are you sure you want to delete this transaction record?")) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/transactions/${txId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
+      const res = await fetch(`${API_URL}/transactions/${txId}`, { method: "DELETE", headers: { Authorization: token ? `Bearer ${token}` : "" } });
       if (res.ok) loadData();
     } catch (err) { console.error("Error deleting transaction:", err); }
   };
@@ -964,8 +965,8 @@ function Dashboard() {
                   key={item.key}
                   onClick={() => { setActiveTab(item.key); setSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all cursor-pointer relative ${isActive
-                      ? "bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300"
-                      : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-700 dark:hover:text-stone-200"
+                    ? "bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300"
+                    : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 hover:text-stone-700 dark:hover:text-stone-200"
                     }`}
                 >
                   {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r bg-teal-700 dark:bg-teal-400" />}
@@ -1117,8 +1118,8 @@ function Dashboard() {
                         <div className="space-y-2">
                           {alertsData.alerts.map((alert: any, i: number) => (
                             <div key={i} className={`p-3 rounded-lg text-xs font-medium border-l-4 ${alert.type === "critical" ? "bg-coral-50 dark:bg-coral-950/30 border-coral-500 text-coral-900 dark:text-coral-300" :
-                                alert.type === "warning" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-500 text-amber-900 dark:text-amber-300" :
-                                  "bg-teal-50 dark:bg-teal-950/20 border-teal-500 text-teal-900 dark:text-teal-300"
+                              alert.type === "warning" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-500 text-amber-900 dark:text-amber-300" :
+                                "bg-teal-50 dark:bg-teal-950/20 border-teal-500 text-teal-900 dark:text-teal-300"
                               }`}>
                               <p className="font-bold mb-0.5">{alert.title}</p>
                               <p className="opacity-80">{alert.message}</p>
@@ -2219,8 +2220,8 @@ function SubPills({ options, active, onChange }: { options: { key: string; label
           key={o.key}
           onClick={() => onChange(o.key)}
           className={`text-xs font-bold px-3.5 py-2 rounded-full border transition-all cursor-pointer ${active === o.key
-              ? "bg-teal-700 border-teal-700 text-white"
-              : "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800"
+            ? "bg-teal-700 border-teal-700 text-white"
+            : "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800"
             }`}
         >
           {o.label}

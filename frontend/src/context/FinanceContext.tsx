@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { API_URL } from "../config";
 
 interface FinanceContextType {
   data: any;
@@ -431,7 +432,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     try {
-      const dashboardRes = await fetch("http://127.0.0.1:8000/dashboard", { headers });
+      const dashboardRes = await fetch(`${API_URL}/dashboard`, { headers });
       if (dashboardRes.ok) {
         const dashboardData = await dashboardRes.json();
         setData(dashboardData);
@@ -459,7 +460,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      const txRes = await fetch("http://127.0.0.1:8000/transactions", { headers });
+      const txRes = await fetch(`${API_URL}/transactions`, { headers });
       if (txRes.ok) {
         const txData = await txRes.json();
         setTransactions(txData);
@@ -467,7 +468,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTransactions([]);
       }
 
-      const insightsRes = await fetch("http://127.0.0.1:8000/insights", { headers });
+      const insightsRes = await fetch(`${API_URL}/insights`, { headers });
       if (insightsRes.ok) {
         const insightsData = await insightsRes.json();
         setInsights(insightsData);
@@ -475,7 +476,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setInsights({ food: 0, travel: 0, shopping: 0, insights: [] });
       }
 
-      const budgetsRes = await fetch("http://127.0.0.1:8000/budgets", { headers });
+      const budgetsRes = await fetch(`${API_URL}/budgets`, { headers });
       if (budgetsRes.ok) {
         const budgetsData = await budgetsRes.json();
         setBudgets(budgetsData);
@@ -483,7 +484,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setBudgets([]);
       }
 
-      const trendsRes = await fetch("http://127.0.0.1:8000/analytics/trends", { headers });
+      const trendsRes = await fetch(`${API_URL}/analytics/trends`, { headers });
       if (trendsRes.ok) {
         const trends = await trendsRes.json();
         setTrendsData(trends);
@@ -491,7 +492,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTrendsData([]);
       }
 
-      const goalsRes = await fetch("http://127.0.0.1:8000/goals", { headers });
+      const goalsRes = await fetch(`${API_URL}/goals`, { headers });
       if (goalsRes.ok) {
         const goalsData = await goalsRes.json();
         setGoals(goalsData);
@@ -499,7 +500,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setGoals([]);
       }
 
-      const subsRes = await fetch("http://127.0.0.1:8000/subscriptions", { headers });
+      const subsRes = await fetch(`${API_URL}/subscriptions`, { headers });
       if (subsRes.ok) {
         const subsData = await subsRes.json();
         setSubscriptions(subsData);
@@ -507,7 +508,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSubscriptions([]);
       }
 
-      const detectRes = await fetch("http://127.0.0.1:8000/subscriptions/detect", { headers });
+      const detectRes = await fetch(`${API_URL}/subscriptions/detect`, { headers });
       if (detectRes.ok) {
         const detectData = await detectRes.json();
         setDetectedSubs(detectData);
@@ -515,47 +516,47 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setDetectedSubs([]);
       }
 
-      const accountsRes = await fetch("http://127.0.0.1:8000/accounts/", { headers });
+      const accountsRes = await fetch(`${API_URL}/accounts/`, { headers });
       if (accountsRes.ok) {
         setAccounts(await accountsRes.json());
       } else {
         setAccounts([]);
       }
 
-      const splitsRes = await fetch("http://127.0.0.1:8000/splits/", { headers });
+      const splitsRes = await fetch(`${API_URL}/splits/`, { headers });
       if (splitsRes.ok) {
         setSplits(await splitsRes.json());
       } else {
         setSplits([]);
       }
 
-      const healthRes = await fetch("http://127.0.0.1:8000/analytics/health-score", { headers });
+      const healthRes = await fetch(`${API_URL}/analytics/health-score`, { headers });
       if (healthRes.ok) {
         setHealthScore(await healthRes.json());
       } else {
         setHealthScore(null);
       }
 
-      const alertsRes = await fetch("http://127.0.0.1:8000/alerts", { headers });
+      const alertsRes = await fetch(`${API_URL}/alerts`, { headers });
       if (alertsRes.ok) setAlertsData(await alertsRes.json());
 
-      const taxRes = await fetch("http://127.0.0.1:8000/tax/estimate", { headers });
+      const taxRes = await fetch(`${API_URL}/tax/estimate`, { headers });
       if (taxRes.ok) setTaxData(await taxRes.json());
 
-      const planRes = await fetch("http://127.0.0.1:8000/budget/plan", { headers });
+      const planRes = await fetch(`${API_URL}/budget/plan`, { headers });
       if (planRes.ok) setBudgetPlan(await planRes.json());
 
-      const nwRes = await fetch("http://127.0.0.1:8000/networth", { headers });
+      const nwRes = await fetch(`${API_URL}/networth`, { headers });
       if (nwRes.ok) setNetWorth(await nwRes.json());
 
-      const remRes = await fetch("http://127.0.0.1:8000/reminders", { headers });
+      const remRes = await fetch(`${API_URL}/reminders`, { headers });
       if (remRes.ok) setReminders(await remRes.json());
       else setReminders([]);
 
-      const hmRes = await fetch("http://127.0.0.1:8000/analytics/daily-spend", { headers });
+      const hmRes = await fetch(`${API_URL}/analytics/daily-spend`, { headers });
       if (hmRes.ok) setHeatmapData(await hmRes.json());
 
-      const gameRes = await fetch("http://127.0.0.1:8000/gamification/stats", { headers });
+      const gameRes = await fetch(`${API_URL}/gamification/stats`, { headers });
       if (gameRes.ok) setGamificationData(await gameRes.json());
 
     } catch (err) {
@@ -589,7 +590,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/profile", {
+      const response = await fetch(`${API_URL}/profile`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -615,7 +616,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (savedTheme) {
       setTheme(savedTheme);
     }
-    fetch("http://127.0.0.1:8000/currency/supported")
+    fetch(`${API_URL}/currency/supported`)
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setSupportedCurrencies(data); })
       .catch(err => console.error("Failed to load supported currencies:", err));
@@ -656,7 +657,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/upload-statement",
+        `${API_URL}/upload-statement`,
         {
           method: "POST",
           headers: {
@@ -710,7 +711,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     try {
       if (authMode === "signup") {
-        const response = await fetch("http://127.0.0.1:8000/signup", {
+        const response = await fetch(`${API_URL}/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: authName, email: authEmail, password: authPassword }),
@@ -724,7 +725,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setAuthError(data.detail || "Signup failed");
         }
       } else {
-        const response = await fetch("http://127.0.0.1:8000/login", {
+        const response = await fetch(`${API_URL}/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: authEmail, password: authPassword }),
@@ -778,7 +779,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!reminderName || !reminderAmount || !reminderDueDate) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/reminders", {
+      const res = await fetch(`${API_URL}/reminders`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({
@@ -802,7 +803,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleReminderPay = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/reminders/${id}/pay`, {
+      await fetch(`${API_URL}/reminders/${id}/pay`, {
         method: "PUT",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
@@ -814,7 +815,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Delete this reminder?"))) return;
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/reminders/${id}`, {
+      await fetch(`${API_URL}/reminders/${id}`, {
         method: "DELETE",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
@@ -825,7 +826,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleReminderSnooze = async (id: number, days: number) => {
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/reminders/${id}/snooze/${days}`, {
+      await fetch(`${API_URL}/reminders/${id}/snooze/${days}`, {
         method: "PUT",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
@@ -838,7 +839,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!token) return;
     setIsAutoCatting(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/transactions/auto-categorize", {
+      const res = await fetch(`${API_URL}/transactions/auto-categorize`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -857,7 +858,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       for (const item of budgetPlan.plan) {
         if (item.suggested_budget > 0) {
-          await fetch("http://127.0.0.1:8000/budgets", {
+          await fetch(`${API_URL}/budgets`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
             body: JSON.stringify({ category: item.category, amount: item.suggested_budget })
@@ -881,8 +882,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       target_date: goalTargetDate
     };
     const url = goalModalMode === "add"
-      ? "http://127.0.0.1:8000/goals"
-      : `http://127.0.0.1:8000/goals/${selectedGoalId}`;
+      ? `${API_URL}/goals`
+      : `${API_URL}/goals/${selectedGoalId}`;
     const method = goalModalMode === "add" ? "POST" : "PUT";
 
     try {
@@ -911,7 +912,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Are you sure you want to delete this savings goal?"))) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/goals/${goalId}`, {
+      const res = await fetch(`${API_URL}/goals/${goalId}`, {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : ""
@@ -947,8 +948,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       next_due_date: subNextDueDate
     };
     const url = subModalMode === "add"
-      ? "http://127.0.0.1:8000/subscriptions"
-      : `http://127.0.0.1:8000/subscriptions/${selectedSubId}`;
+      ? `${API_URL}/subscriptions`
+      : `${API_URL}/subscriptions/${selectedSubId}`;
     const method = subModalMode === "add" ? "POST" : "PUT";
 
     try {
@@ -978,7 +979,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Are you sure you want to remove this subscription?"))) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/subscriptions/${subId}`, {
+      const res = await fetch(`${API_URL}/subscriptions/${subId}`, {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : ""
@@ -1006,7 +1007,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const acceptDetectedSub = async (detected: any) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/subscriptions", {
+      const res = await fetch(`${API_URL}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1029,8 +1030,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const token = localStorage.getItem("token");
     const payload = { name: accountName, account_type: accountType, balance: parseFloat(accountBalance || "0") };
     const url = accountModalMode === "add"
-      ? "http://127.0.0.1:8000/accounts/"
-      : `http://127.0.0.1:8000/accounts/${selectedAccountId}`;
+      ? `${API_URL}/accounts/`
+      : `${API_URL}/accounts/${selectedAccountId}`;
     const method = accountModalMode === "add" ? "POST" : "PUT";
     try {
       const res = await fetch(url, {
@@ -1050,7 +1051,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Delete this account?"))) return;
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/accounts/${id}`, {
+      await fetch(`${API_URL}/accounts/${id}`, {
         method: "DELETE",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
@@ -1078,7 +1079,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount_owed: parseFloat(splitOwed)
     };
     try {
-      const res = await fetch("http://127.0.0.1:8000/splits/", {
+      const res = await fetch(`${API_URL}/splits/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify(payload)
@@ -1094,7 +1095,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleSplitSettle = async (id: number) => {
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/splits/${id}/settle`, {
+      await fetch(`${API_URL}/splits/${id}/settle`, {
         method: "PUT",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
@@ -1106,7 +1107,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Delete this split record?"))) return;
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://127.0.0.1:8000/splits/${id}`, {
+      await fetch(`${API_URL}/splits/${id}`, {
         method: "DELETE",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
@@ -1117,7 +1118,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleCSVExport = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    const url = `http://127.0.0.1:8000/reports/csv`;
+    const url = `${API_URL}/reports/csv`;
     const a = document.createElement("a");
     a.href = url;
     a.setAttribute("download", "finance_report.csv");
@@ -1139,7 +1140,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!budgetAmount || parseFloat(budgetAmount) <= 0) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/budgets", {
+      const res = await fetch(`${API_URL}/budgets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1161,7 +1162,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Are you sure you want to delete this budget target?"))) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/budgets/${budgetId}`, {
+      const res = await fetch(`${API_URL}/budgets/${budgetId}`, {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : ""
@@ -1185,7 +1186,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/chat", {
+      const res = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1215,7 +1216,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("http://127.0.0.1:8000/receipts/scan", {
+      const res = await fetch(`${API_URL}/receipts/scan`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -1224,7 +1225,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (result.success) {
         // Also upload the image for storage
         try {
-          const storeRes = await fetch("http://127.0.0.1:8000/receipts/store", {
+          const storeRes = await fetch(`${API_URL}/receipts/store`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
             body: formData,
@@ -1275,8 +1276,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const token = localStorage.getItem("token");
     const url = txModalMode === "add"
-      ? "http://127.0.0.1:8000/transactions"
-      : `http://127.0.0.1:8000/transactions/${selectedTxId}`;
+      ? `${API_URL}/transactions`
+      : `${API_URL}/transactions/${selectedTxId}`;
     const method = txModalMode === "add" ? "POST" : "PUT";
 
     try {
@@ -1311,7 +1312,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Are you sure you want to delete this transaction record?"))) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/transactions/${txId}`, {
+      const res = await fetch(`${API_URL}/transactions/${txId}`, {
         method: "DELETE",
         headers: {
           Authorization: token ? `Bearer ${token}` : ""
@@ -1330,7 +1331,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction(`Delete ${ids.length} selected transaction${ids.length === 1 ? "" : "s"}? This can't be undone.`))) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/transactions/bulk", {
+      const res = await fetch(`${API_URL}/transactions/bulk`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({ ids })
@@ -1351,7 +1352,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (ids.length === 0) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/transactions/bulk/category", {
+      const res = await fetch(`${API_URL}/transactions/bulk/category`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({ ids, category })
@@ -1386,7 +1387,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const token = localStorage.getItem("token");
     if (!token) return;
     try {
-      const res = await fetch("http://127.0.0.1:8000/categories", {
+      const res = await fetch(`${API_URL}/categories`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setCategories(await res.json());
@@ -1397,7 +1398,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!name.trim()) return false;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch("http://127.0.0.1:8000/categories", {
+      const res = await fetch(`${API_URL}/categories`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({ name: name.trim(), color })
@@ -1420,7 +1421,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleCategoryUpdate = async (id: number, name: string, color: string) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/categories/${id}`, {
+      const res = await fetch(`${API_URL}/categories/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
         body: JSON.stringify({ name, color })
@@ -1436,7 +1437,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!(await confirmAction("Delete this category? Existing entries already using it will keep their label."))) return;
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://127.0.0.1:8000/categories/${id}`, {
+      const res = await fetch(`${API_URL}/categories/${id}`, {
         method: "DELETE",
         headers: { Authorization: token ? `Bearer ${token}` : "" }
       });
