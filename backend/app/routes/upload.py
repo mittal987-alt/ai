@@ -47,8 +47,8 @@ def ocr_extract_text(pdf_path: str) -> str:
 @router.post("/upload-statement")
 async def upload_statement(
     file: UploadFile = File(...),
-    password: str = Form(None),  # <-- Added optional password form field
-    currency: str = Form("INR"),  # <-- Currency the statement is denominated in
+    password: str = Form(None),
+    currency: str = Form("INR"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -59,22 +59,20 @@ async def upload_statement(
     if not file.filename.lower().endswith(".pdf"):
         return {"success": False, "message": "Only PDF files are allowed."}
 
-    # ---------- Resolve currency rate once (a statement is one currency) ----------
-    statement_currency = (currency or "INR").upper()
+    # ---------- Resolve currency rate ----------
+    statement_currency = (currency or "INR").upper()[:10]  # truncate to VARCHAR(10)
     exchange_rate = 1.0
     if statement_currency != "INR":
         try:
             conv = await convert_currency_logic(1.0, statement_currency, "INR")
             exchange_rate = conv["rate"]
-        except ValueError:
-            # Unsupported currency code -- fall back to treating it as INR
-            # rather than failing the whole upload.
+        except Exception:
             statement_currency = "INR"
             exchange_rate = 1.0
 
-    # ---------- Save uploaded PDF ----------
+    # ---------- Save uploaded PDF to temp file ----------
     contents = await file.read()
-    tmp_path = None 
+    tmp_path = None
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -83,7 +81,7 @@ async def upload_statement(
 
         # ---------- Handle Password Protection ----------
         pdf_reader = PdfReader(tmp_path)
-        
+
         if pdf_reader.is_encrypted:
             if not password:
                 return {
@@ -91,17 +89,17 @@ async def upload_statement(
                     "requires_password": True,
                     "message": "This PDF is encrypted. Please provide the file password."
                 }
-            
-            # Attempt to decrypt
-            decryption_status = pdf_reader.decrypt(password)
-            if decryption_status == 0:  # 0 indicates failure
+
+            # decrypt() returns PasswordType enum in newer pypdf; falsy on failure
+            result = pdf_reader.decrypt(password)
+            if not result:
                 return {
                     "success": False,
                     "requires_password": True,
                     "message": "Incorrect password. Unable to unlock the bank statement."
                 }
-            
-            # Save the decrypted version over the temp file for pdfplumber/easyocr
+
+            # Write decrypted version back for pdfplumber / OCR
             pdf_writer = PdfWriter()
             for page in pdf_reader.pages:
                 pdf_writer.add_page(page)
@@ -110,111 +108,158 @@ async def upload_statement(
 
         # ---------- Text Extraction ----------
         extracted_text = ""
-
         with pdfplumber.open(tmp_path) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     extracted_text += page_text + "\n"
 
-        if extracted_text.strip() == "":
-            print("No digital text found. Running OCR...")
+        if not extracted_text.strip():
+            print("[upload] No digital text found — running OCR...")
             extracted_text = ocr_extract_text(tmp_path)
 
-        if extracted_text.strip() == "":
+        if not extracted_text.strip():
             return {"success": False, "message": "Unable to extract text from this PDF."}
 
-        # ---------- Extract & Parse Transactions ----------
+        # ---------- Parse Transactions ----------
         transactions = extract_transactions(extracted_text, pdf_path=tmp_path)
 
-        if len(transactions) == 0:
+        if not transactions:
             return {
                 "success": False,
                 "message": "No transactions found. Please upload a valid bank statement.",
                 "sample_text": extracted_text[:500]
             }
 
-        # ---------- Save Uploaded Document ----------
+        # ---------- Save UploadedDocument record ----------
         doc = UploadedDocument(
             user_id=current_user.id,
-            filename=file.filename,
+            filename=str(file.filename or "")[:255],
             extracted_text=extracted_text
         )
         db.add(doc)
+        db.flush()  # get doc.id, validate FK — will raise immediately if it fails
 
+        # ---------- Save Transactions (with per-row savepoints) ----------
         saved = 0
         skipped = 0
+        errors = []
 
         for tx in transactions:
-            tx_date = tx.get("date") or date.today()
+            # Use a savepoint so a single bad row doesn't abort the whole session
+            sp = db.begin_nested()
+            try:
+                tx_date = tx.get("date") or date.today()
 
-            # Clean and parse amount safely (this is in the statement's own currency)
-            clean_amount = str(tx["amount"]).replace(",", "").replace("₹", "").strip()
-            original_amount_val = float(clean_amount)
-
-            if statement_currency == "INR":
-                final_amount = original_amount_val
-                stored_original_amount = None
-            else:
-                final_amount = round(original_amount_val * exchange_rate, 2)
-                stored_original_amount = original_amount_val
-
-            duplicate = (
-                db.query(Transaction)
-                .filter(
-                    Transaction.user_id == current_user.id,
-                    Transaction.description == tx["description"],
-                    Transaction.amount == final_amount,
-                    Transaction.transaction_date == tx_date
+                # ---- Amount ----
+                raw_amount = (
+                    str(tx.get("amount", "") or "")
+                    .replace(",", "")
+                    .replace("₹", "")
+                    .strip()
                 )
-                .first()
-            )
+                raw_amount = re.sub(r"\s*(CR|DR)\s*$", "", raw_amount, flags=re.IGNORECASE).strip()
+                if not raw_amount:
+                    sp.rollback()
+                    skipped += 1
+                    continue
+                original_amount_val = abs(float(raw_amount))
+                if original_amount_val == 0:
+                    sp.rollback()
+                    skipped += 1
+                    continue
 
-            if duplicate:
+                if statement_currency == "INR":
+                    final_amount = original_amount_val
+                    stored_original_amount = None
+                else:
+                    final_amount = round(original_amount_val * exchange_rate, 2)
+                    stored_original_amount = original_amount_val
+
+                # ---- Transaction type ----
+                transaction_type = tx.get("transaction_type")
+                if not transaction_type:
+                    desc_upper = str(tx.get("description", "")).upper()
+                    is_income = (
+                        any(k in desc_upper for k in [
+                            "SALARY", "CREDIT", "DEPOSIT", "INTEREST",
+                            "REFUND", "DIVIDEND", "CASHBACK", "REVERSAL",
+                        ]) or
+                        "/CR/" in desc_upper or
+                        desc_upper.endswith("/CR") or
+                        desc_upper.startswith("CR/") or
+                        bool(re.search(r"\bCR\b", desc_upper))
+                    )
+                    transaction_type = "income" if is_income else "expense"
+                transaction_type = str(transaction_type)[:20]  # VARCHAR(20)
+
+                # ---- Description ----
+                raw_desc = str(tx.get("description", "") or "")
+                clean_desc = re.sub(
+                    r"\s+(CR|DR|CR/|DR/)\s*$", "", raw_desc, flags=re.IGNORECASE
+                ).strip()
+                clean_desc = (clean_desc or raw_desc)[:255]  # VARCHAR(255)
+
+                if not clean_desc:
+                    sp.rollback()
+                    skipped += 1
+                    continue
+
+                # ---- Category ----
+                category = str(tx.get("category", "Others") or "Others")[:100]  # VARCHAR(100)
+
+                # ---- Duplicate check ----
+                duplicate = (
+                    db.query(Transaction)
+                    .filter(
+                        Transaction.user_id == current_user.id,
+                        Transaction.description == clean_desc,
+                        Transaction.amount == final_amount,
+                        Transaction.transaction_date == tx_date,
+                    )
+                    .first()
+                )
+                if duplicate:
+                    sp.rollback()
+                    skipped += 1
+                    continue
+
+                # ---- Debug: print field lengths before insert ----
+                print("=" * 80)
+                print(f"description: {repr(clean_desc)}  len={len(clean_desc)}")
+                print(f"category:    {repr(category)}  len={len(category)}")
+                print(f"transaction_type: {repr(transaction_type)}  len={len(transaction_type)}")
+                print(f"currency:    {repr(statement_currency)}  len={len(statement_currency)}")
+                print(f"filename:    {repr(str(file.filename))}  len={len(str(file.filename))}")
+                print("=" * 80)
+
+                # ---- Insert ----
+                transaction = Transaction(
+                    user_id=current_user.id,
+                    transaction_date=tx_date,
+                    description=clean_desc,
+                    amount=final_amount,
+                    currency=statement_currency,
+                    original_amount=stored_original_amount,
+                    exchange_rate=exchange_rate,
+                    category=category,
+                    transaction_type=transaction_type,
+                )
+                db.add(transaction)
+                db.flush()   # validate against DB inside savepoint
+                sp.commit()  # release savepoint — row is now part of outer transaction
+                saved += 1
+
+            except Exception as tx_err:
+                sp.rollback()  # undo only this row, keep previous rows intact
+                err_msg = str(tx_err)
+                print(f"[upload] Skipping row — {err_msg[:200]}")
+                errors.append(err_msg[:200])
                 skipped += 1
                 continue
 
-            # Use the transaction_type from the parser (primary source)
-            transaction_type = tx.get("transaction_type")
+        db.commit()  # commit everything (doc + all saved transactions) at once
 
-            # Fallback: keyword-based detection if parser didn't determine type
-            if not transaction_type:
-                desc_upper = tx["description"].upper()
-                is_income = (
-                    any(k in desc_upper for k in [
-                        "SALARY", "CREDIT", "DEPOSIT", "INTEREST",
-                        "REFUND", "DIVIDEND", "CASHBACK", "REVERSAL",
-                    ]) or
-                    "/CR/" in desc_upper or
-                    desc_upper.endswith("/CR") or
-                    desc_upper.startswith("CR/") or
-                    re.search(r"\bCR\b", desc_upper) is not None
-                )
-                transaction_type = "income" if is_income else "expense"
-
-            # Clean any lingering CR/DR markers from the description
-            clean_desc = re.sub(
-                r"\s+(CR|DR|CR/|DR/)\s*$", "",
-                tx["description"], flags=re.IGNORECASE,
-            ).strip()
-
-            transaction = Transaction(
-                user_id=current_user.id,
-                transaction_date=tx_date,
-                description=clean_desc or tx["description"],
-                amount=final_amount,
-                currency=statement_currency,
-                original_amount=stored_original_amount,
-                exchange_rate=exchange_rate,
-                category=tx.get("category", "Others"),
-                transaction_type=transaction_type
-            )
-            db.add(transaction)
-            saved += 1
-
-        db.commit()
-
-        # Count income vs expense for the response
         income_count = sum(1 for tx in transactions if tx.get("transaction_type") == "income")
         expense_count = sum(1 for tx in transactions if tx.get("transaction_type") == "expense")
 
@@ -228,12 +273,18 @@ async def upload_statement(
             "expense_count": expense_count,
             "currency": statement_currency,
             "exchange_rate": exchange_rate,
-            "message": "Bank statement processed successfully."
+            "message": "Bank statement processed successfully.",
+            **({"warnings": errors[:5]} if errors else {}),
         }
 
     except Exception as e:
         db.rollback()
-        return {"success": False, "message": f"Server Error: {str(e)}"}
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "message": f"Server Error: {repr(e)}"
+        }
 
     finally:
         if tmp_path and os.path.exists(tmp_path):
